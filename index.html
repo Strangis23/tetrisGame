@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tetris Tower Defense</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="game-root">
+  <div id="canvas-wrap">
+    <canvas id="game-canvas"></canvas>
+    <div id="overlay" class="hidden">
+      <div id="overlay-content">
+        <h2 id="overlay-title">Tetris Tower Defense</h2>
+        <p id="overlay-message">Place your home base anywhere. It will define where the enemies converge — choose wisely.</p>
+        <button id="overlay-button">Start</button>
+      </div>
+    </div>
+  </div>
+
+  <aside id="hud">
+    <h1>TTD</h1>
+    <div id="phase-indicator">Place Home Base</div>
+
+    <div class="hud-section">
+      <div class="hud-stat"><span>Score</span><span id="score">0</span></div>
+      <div class="hud-stat"><span>Wave</span><span id="wave">0 / 100</span></div>
+      <div class="hud-stat"><span>Speed Tier</span><span id="speed-tier">1</span></div>
+      <div class="hud-stat"><span>Pieces Left</span><span id="pieces-left">--</span></div>
+      <div class="hud-stat"><span>Enemies Left</span><span id="enemies-left">--</span></div>
+      <div class="hud-stat"><span>Wave Speed (F)</span><span id="wave-speed">1x</span></div>
+    </div>
+
+    <div class="hud-section" id="wave-preview-section">
+      <h3>Next Wave</h3>
+      <div id="wave-preview" class="wave-preview muted">--</div>
+    </div>
+
+    <div class="hud-section piece-previews">
+      <div class="preview-block">
+        <h3>Next</h3>
+        <canvas id="next-canvas" width="100" height="100"></canvas>
+      </div>
+      <div class="preview-block">
+        <h3>Hold (C)</h3>
+        <canvas id="hold-canvas" width="100" height="100"></canvas>
+      </div>
+    </div>
+
+    <div class="hud-section deck-panel">
+      <h3>Deck <span class="muted" id="deck-count"></span></h3>
+      <div id="deck-chips" class="deck-chips"></div>
+    </div>
+
+    <div class="hud-section controls">
+      <h3>Controls</h3>
+      <div><kbd>&larr;</kbd> <kbd>&rarr;</kbd> Move</div>
+      <div><kbd>&darr;</kbd> Soft drop</div>
+      <div><kbd>Space</kbd> Hard drop</div>
+      <div><kbd>&uarr;</kbd> / <kbd>R</kbd> Rotate</div>
+      <div><kbd>C</kbd> Hold piece</div>
+      <div><kbd>F</kbd> Wave speed</div>
+      <div><kbd>P</kbd> Pause</div>
+      <div class="muted">Click damaged block to repair (10 pts/hp).</div>
+    </div>
+  </aside>
+</div>
+
+<div id="shop-modal" class="hidden">
+  <div class="modal-content shop-modal-content">
+    <div class="shop-header">
+      <h2>Card Shop</h2>
+      <p class="muted">Wave <span id="shop-wave">5</span> cleared. Buy any card to permanently add it to your deck — but you must remove one of your existing cards in exchange. Higher-wave shops offer rarer cards.</p>
+      <div class="hud-stat"><span>Points</span><span id="shop-points">0</span></div>
+    </div>
+    <div class="shop-body">
+      <div class="shop-pane">
+        <h3>Available Cards</h3>
+        <div id="shop-list" class="shop-grid"></div>
+      </div>
+      <div class="shop-pane shop-deck-pane" id="shop-deck-pane">
+        <h3 id="shop-deck-title">Your Deck</h3>
+        <p class="muted" id="shop-deck-hint">Click a card to inspect. Click "Buy" on a shop card first to swap.</p>
+        <div id="shop-deck-grid" class="shop-grid deck-grid"></div>
+      </div>
+    </div>
+    <div class="shop-footer">
+      <button id="shop-cancel-buy" class="hidden">Cancel swap</button>
+      <button id="shop-close">Continue to next wave</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js?v=6"></script>
+<script src="js/cards.js?v=6"></script>
+<script src="js/deck.js?v=6"></script>
+<script src="js/grid.js?v=6"></script>
+<script src="js/pieces.js?v=6"></script>
+<script src="js/pathfinding.js?v=6"></script>
+<script src="js/projectiles.js?v=6"></script>
+<script src="js/enemies.js?v=6"></script>
+<script src="js/towers.js?v=6"></script>
+<script src="js/waves.js?v=6"></script>
+<script src="js/ui.js?v=6"></script>
+<script src="js/input.js?v=6"></script>
+<script src="js/render.js?v=6"></script>
+<script src="js/game.js?v=6"></script>
+<script src="js/main.js?v=6"></script>
+</body>
+</html>
