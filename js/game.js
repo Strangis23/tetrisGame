@@ -22,6 +22,8 @@ class Game {
     this.lockTimer = 0;
     this.softDropping = false;
     this.paused = false;
+    this.helpOpen = false;
+    this._wasPausedBeforeHelp = false;
     this.banner = null;
     this.waveSpawner = null;
     this.input = null;
@@ -30,6 +32,12 @@ class Game {
     this.waveStats = { kills: 0, points: 0, income: 0 };
     this.heldCard = null;          // Tetris-style hold slot
     this.holdUsedThisPiece = false; // reset on lock so each spawn allows one hold
+    this.baseHp = 0;
+    this.baseMaxHp = 0;
+    this.baseHpLevel = 0;
+    this.baseHpBonus = 0;       // shop fortify purchases
+    this.baseWallBonus = 0;     // legendary wall passive (stacked per placed cell)
+    this._basePieceHp = 0;      // sum of card HP on base cells at placement
   }
 
   // Swap the active piece with the held card (or draw a new one if hold is empty).
@@ -97,8 +105,91 @@ class Game {
 
   togglePause() {
     if (this.phase === 'GAMEOVER' || this.phase === 'WIN' || this.phase === 'IDLE') return;
+    if (this.helpOpen) {
+      this.closeHelp();
+      return;
+    }
     this.paused = !this.paused;
     if (this.paused) this.setBanner('Paused', 99); else this.banner = null;
+  }
+
+  openHelp() {
+    if (this.phase === 'GAMEOVER' || this.phase === 'WIN' || this.phase === 'IDLE') return;
+    if (this.helpOpen) return;
+    this._wasPausedBeforeHelp = this.paused;
+    this.helpOpen = true;
+    this.paused = true;
+    this.banner = null;
+  }
+
+  closeHelp() {
+    if (!this.helpOpen) return;
+    this.helpOpen = false;
+    this.paused = this._wasPausedBeforeHelp;
+    if (!this.paused) this.banner = null;
+  }
+
+  recomputeBasePool() {
+    this.baseMaxHp = Math.max(1, this._basePieceHp + this.baseHpBonus + this.baseWallBonus);
+    if (this.baseHp > this.baseMaxHp) this.baseHp = this.baseMaxHp;
+    if (this.baseMaxHp > 0 && this.baseHp <= 0) this.baseHp = 0;
+    this.grid.syncBaseHpDisplay(this.baseHp, this.baseMaxHp);
+  }
+
+  initBasePoolFromPlacement(card, cellCount) {
+    const perCell = card.stats.hp || 1;
+    this._basePieceHp = perCell * cellCount;
+    this.baseHp = Math.max(1, this._basePieceHp + this.baseHpBonus + this.baseWallBonus);
+    this.baseMaxHp = this.baseHp;
+    this.grid.syncBaseHpDisplay(this.baseHp, this.baseMaxHp);
+  }
+
+  applyWallBaseHpBonus(amount) {
+    if (!amount || amount <= 0) return;
+    this.baseWallBonus += amount;
+    const prevMax = this.baseMaxHp;
+    this.recomputeBasePool();
+    if (this.baseMaxHp > prevMax) {
+      this.baseHp += this.baseMaxHp - prevMax;
+      this.recomputeBasePool();
+    }
+  }
+
+  damageBase(dmg) {
+    if (dmg <= 0 || this.baseMaxHp <= 0) return;
+    this.baseHp = Math.max(0, this.baseHp - dmg);
+    this.grid.syncBaseHpDisplay(this.baseHp, this.baseMaxHp);
+    if (this.baseHp <= 0) {
+      this.lose('Your home base was destroyed!');
+    }
+  }
+
+  baseUpgradeCost() {
+    const cfg = CONFIG.BASE_UPGRADE || {};
+    const base = cfg.baseCost ?? 180;
+    const scale = cfg.costScale ?? 1.4;
+    return Math.floor(base * Math.pow(scale, this.baseHpLevel));
+  }
+
+  canBuyBaseUpgrade() {
+    const cfg = CONFIG.BASE_UPGRADE || {};
+    const max = cfg.maxPurchases ?? 15;
+    return this.baseMaxHp > 0 && this.baseHpLevel < max;
+  }
+
+  buyBaseUpgrade() {
+    if (this.phase !== 'SHOP') return { ok: false, reason: 'Shop closed' };
+    if (!this.canBuyBaseUpgrade()) return { ok: false, reason: 'Max upgrades reached' };
+    const cost = this.baseUpgradeCost();
+    if (this.score < cost) return { ok: false, reason: 'Not enough points' };
+    const cfg = CONFIG.BASE_UPGRADE || {};
+    const hpGain = cfg.hpPerPurchase ?? 30;
+    this.score -= cost;
+    this.baseHpLevel += 1;
+    this.baseHpBonus += hpGain;
+    this.baseHp += hpGain;
+    this.recomputeBasePool();
+    return { ok: true, spent: cost, hpGain };
   }
 
   speedTier() {
@@ -185,13 +276,10 @@ class Game {
 
     this.grid.registerPlacement(placed, piece.card, isBase);
 
-    const lockedCells = placed.map(({ x, y }) => this.grid.get(x, y)).filter(Boolean);
-    if (typeof maxSynergyOnCells === 'function') {
-      const peak = maxSynergyOnCells(lockedCells);
-      const threshold = (CONFIG.SYNERGY && CONFIG.SYNERGY.BANNER_THRESHOLD) || 1.25;
-      if (peak >= threshold) {
-        this.setBanner('Synergy! Adjacent blocks strengthen each other.', 1.2);
-      }
+    if (isBase) {
+      this.initBasePoolFromPlacement(piece.card, placed.length);
+    } else if (piece.card.stats && piece.card.stats.baseHpBonus) {
+      this.applyWallBaseHpBonus(piece.card.stats.baseHpBonus);
     }
 
     this.activePiece = null;
@@ -279,17 +367,19 @@ class Game {
       try { e.update(dtScaled, this); }
       catch (err) { console.error('enemy.update threw:', err, e); e.dead = true; }
     }
-    const killed = this.enemies.filter((e) => e.dead && !e.reachedBase && !e.despawned);
+    for (const e of this.enemies) {
+      if (e.atBase && !e.dead) {
+        try { e.siegeBase(dtScaled, this); }
+        catch (err) { console.error('siegeBase threw:', err, e); }
+      }
+    }
+    const killed = this.enemies.filter((e) => e.dead && !e.despawned);
     for (const e of killed) {
       const scale = CONFIG.KILL_REWARD_WAVE_SCALE ?? 0.012;
       const pts = Math.floor(e.stats.reward * (1 + (this.wave - 1) * scale));
       this.score += pts;
       this.waveStats.kills += 1;
       this.waveStats.points += pts;
-    }
-    if (this.enemies.some((e) => e.reachedBase)) {
-      this.lose('An enemy reached your home base!');
-      return;
     }
     this.enemies = this.enemies.filter((e) => !e.dead);
 
@@ -317,7 +407,9 @@ class Game {
     if (this.wave >= CONFIG.TOTAL_WAVES) {
       this.phase = 'WIN';
       this.setBanner(`Victory! Final score: ${this.score}`, 99);
-      window.dispatchEvent(new CustomEvent('ttd-game-end', { detail: { win: true, score: this.score } }));
+      window.dispatchEvent(new CustomEvent('ttd-game-end', {
+        detail: { win: true, score: this.score, wave: this.wave },
+      }));
       return;
     }
     this.setBanner(summary, 2.0);
@@ -377,7 +469,9 @@ class Game {
     this.phase = 'GAMEOVER';
     this.clearCombatVisuals();
     this.setBanner('Game Over', 99);
-    window.dispatchEvent(new CustomEvent('ttd-game-end', { detail: { win: false, reason, score: this.score } }));
+    window.dispatchEvent(new CustomEvent('ttd-game-end', {
+      detail: { win: false, reason, score: this.score, wave: this.wave },
+    }));
   }
 
   // Strip in-flight projectiles and combat VFX when leaving the wave phase.

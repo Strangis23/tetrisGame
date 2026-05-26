@@ -10,7 +10,9 @@ No build tools, no dependencies. Open `index.html` (or serve the folder over HTT
 2. **Build phase.** Each round, four pieces are drawn from your deck. Place them like Tetris. Filled rows clear (and award points), but the towers in those rows are destroyed.
 3. **Wave phase.** Cells act as towers based on the role on their card. Walkers and brutes path with A\*; flyers ignore terrain; brutes break walls. Reach zero enemies to clear the wave.
 4. **Shop (every 5 waves).** Browse 10 random cards across 5 rarities. Click **Buy**, then click any of your existing 20 deck cards to swap it out. Repeat for as many purchases as you can afford.
-5. **Win** by clearing all 100 waves. **Lose** if an enemy reaches your home base, your home base is line-cleared away, or blocks reach the spawn area.
+5. **Win** by clearing all 100 waves. **Lose** if your **home base HP** reaches zero, your base is line-cleared away, or blocks reach the spawn area.
+
+Your home base has a shared **HP pool** (from the HP of the piece you place first). Enemies that reach base cells **siege** it over time instead of ending the run instantly. In the shop, spend points on **Fortify Base** (+30 max HP per level, escalating cost) in addition to card swaps.
 
 ## The Deck
 
@@ -33,11 +35,13 @@ Behaviour is tied to the **card's role**, not the shape. Any shape can carry any
 
 | Rarity | Color | Cost | Notes |
 | --- | --- | --- | --- |
-| common | gray | 120 | Walls and shooters at baseline stats |
-| uncommon | green | 280 | Beefier walls/shooters |
-| rare | blue | 650 | First specialist roles unlock |
-| epic | purple | 1600 | Strong specialists, piercer, multishot |
-| legendary | gold | 4500 | Game-changing effects |
+| common | gray | 220 | Walls and shooters at baseline stats |
+| uncommon | green | 500 | Beefier walls/shooters |
+| rare | blue | 1100 | First specialist roles unlock |
+| epic | purple | 2800 | Strong specialists, piercer, multishot |
+| legendary | gold | 7500 | Game-changing effects |
+
+Points come from **enemy kills**, **line clears** (50 / 150 / 250 / 400 for 1–4 lines), and **wall passive income** at the start of each wave (+2–9 per wall cell by rarity).
 
 Higher rarity slots become more common in the shop as you progress:
 
@@ -67,16 +71,33 @@ The starter `Pellet Gun` is intentionally weaker than late-game alternatives. Su
 - Z — rotate counter-clockwise
 - ↓ — soft drop
 - Space — hard drop
+- C — hold piece
+- F — cycle wave speed (during waves)
 - P — pause
+- **?** (HUD) — open help (pauses the game; Esc or Close to resume)
+- **★** (HUD) — opens [highscores.html](highscores.html) showing your best run (wave + points)
 - Mouse hover — preview a placed cell's range circle
+
+## High scores
+
+Runs are saved automatically when you win or lose. Tap **★** in the HUD to open **highscores.html**, which shows your best run (highest **wave**, then **points remaining**). Scores persist in your browser (`localStorage`, up to 20 entries).
+
+**Synergy:** adjacent same-role blocks boost HP and attack. Synergized cells show a **gold outline** on the board (no pop-up text).
+
+**Counters:** tower roles deal 1.5× damage to “weak” enemy types and 0.55× to “resist” types — e.g. sniper and piercer vs flyers; shooters are weak against flyers. See in-game help (?).
+
+On mobile, the board stays on top; deck and extra panels collapse under **▸** sections. Enable touch controls in the HUD when needed.
 
 ## File Layout
 
 ```
 index.html
+highscores.html
 styles.css
 js/
   config.js       constants, rarity colors, speed/HP scaling tables
+  matchups.js     role vs enemy damage multipliers
+  highscores.js   local leaderboard (wave + points)
   cards.js        ROLES, RARITIES, stat templates, rarityWeights, generateShopCards
   deck.js         Deck class — shuffle/draw/peek/replace/serialize
   pieces.js       Piece wraps a card; movement + rotation

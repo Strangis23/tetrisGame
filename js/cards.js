@@ -29,11 +29,11 @@ const ROLES_BY_RARITY = {
 // per shot (lower = faster), damage per shot.
 const ROLE_TEMPLATES = {
   wall: {
-    common:    { hp: 8,  passiveIncome: 1 },
-    uncommon:  { hp: 14, passiveIncome: 2 },
-    rare:      { hp: 22, passiveIncome: 3 },
-    epic:      { hp: 35, passiveIncome: 5 },
-    legendary: { hp: 60, passiveIncome: 8, baseHpBonus: 4 },
+    common:    { hp: 8,  passiveIncome: 2 },
+    uncommon:  { hp: 14, passiveIncome: 3 },
+    rare:      { hp: 22, passiveIncome: 4 },
+    epic:      { hp: 35, passiveIncome: 6 },
+    legendary: { hp: 60, passiveIncome: 9, baseHpBonus: 4 },
   },
   shooter: {
     common:    { hp: 3, range: 4.0,  damage: 7,  fireRate: 0.55 },

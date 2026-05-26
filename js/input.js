@@ -66,7 +66,15 @@ class Input {
     if (e.repeat) return;
     const k = e.code;
 
-    if (k === 'KeyP') { this.game.togglePause(); return; }
+    if (k === 'Escape') {
+      if (this.game.helpOpen) this.game.closeHelp();
+      return;
+    }
+    if (k === 'KeyP') {
+      if (this.game.helpOpen) this.game.closeHelp();
+      else this.game.togglePause();
+      return;
+    }
     if (k === 'KeyF') { this.game.cycleWaveSpeed(); return; }
 
     if (this.game.phase === 'GAMEOVER' || this.game.phase === 'WIN') {

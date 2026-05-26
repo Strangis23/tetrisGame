@@ -4,6 +4,7 @@ class UI {
   constructor(game) {
     this.game = game;
     this.elScore = document.getElementById('score');
+    this.elBaseHp = document.getElementById('base-hp');
     this.elWave = document.getElementById('wave');
     this.elTier = document.getElementById('speed-tier');
     this.elPieces = document.getElementById('pieces-left');
@@ -17,7 +18,10 @@ class UI {
     this.holdCtx = this.elHoldCanvas ? this.elHoldCanvas.getContext('2d') : null;
     this.elDeckChips = document.getElementById('deck-chips');
     this.elDeckCount = document.getElementById('deck-count');
-    this.elSynergyTooltip = document.getElementById('synergy-tooltip');
+
+    this.helpModal = document.getElementById('help-modal');
+    this.helpBtn = document.getElementById('help-btn');
+    this.helpClose = document.getElementById('help-close');
 
     this.overlay = document.getElementById('overlay');
     this.overlayTitle = document.getElementById('overlay-title');
@@ -36,6 +40,8 @@ class UI {
     this.shopCancelBuy = document.getElementById('shop-cancel-buy');
     this.deckSortBar = document.getElementById('deck-sort-bar');
     this.sortDirectionBtn = document.getElementById('sort-direction');
+    this.shopBaseUpgrade = document.getElementById('shop-base-upgrade');
+    this.shopBaseHpLabel = document.getElementById('shop-base-hp-label');
 
     this.pendingBuyIndex = -1; // index into game.shopCards waiting for a deck swap
     this.shopDeckSort = { key: 'shape', asc: true };
@@ -48,9 +54,65 @@ class UI {
     if (this.deckSortBar) {
       this.deckSortBar.addEventListener('click', (e) => this.onDeckSortClick(e));
     }
+    if (this.shopBaseUpgrade) {
+      this.shopBaseUpgrade.addEventListener('click', () => this.onBaseUpgradeClick());
+    }
 
     window.addEventListener('ttd-shop-open', (ev) => this.openShop(ev.detail.wave));
     window.addEventListener('ttd-game-end', (ev) => this.handleGameEnd(ev.detail));
+
+    if (this.helpBtn) {
+      this.helpBtn.addEventListener('click', () => this.openHelp());
+    }
+    if (this.helpClose) {
+      this.helpClose.addEventListener('click', () => this.closeHelp());
+    }
+    if (this.helpModal) {
+      this.helpModal.addEventListener('click', (e) => {
+        if (e.target === this.helpModal) this.closeHelp();
+      });
+    }
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Escape' && this.game.helpOpen) {
+        e.preventDefault();
+        this.closeHelp();
+      }
+    });
+
+    this.initHudCollapsible();
+  }
+
+  initHudCollapsible() {
+    const wideMq = window.matchMedia('(min-width: 901px)');
+    const sync = () => {
+      for (const el of document.querySelectorAll('details.hud-collapsible')) {
+        if (wideMq.matches) el.setAttribute('open', '');
+      }
+    };
+    sync();
+    wideMq.addEventListener('change', sync);
+  }
+
+  openHelp() {
+    if (!this.helpModal) return;
+    this.game.openHelp();
+    this.helpModal.classList.remove('hidden');
+    if (this.helpBtn) this.helpBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  closeHelp() {
+    if (!this.helpModal) return;
+    this.game.closeHelp();
+    this.helpModal.classList.add('hidden');
+    if (this.helpBtn) this.helpBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  updateIntroBestLine() {
+    const el = document.getElementById('overlay-best-score');
+    if (!el) return;
+    const line = typeof formatBestHighScoreLine === 'function' ? formatBestHighScoreLine() : '';
+    el.textContent = line;
+    el.classList.toggle('hidden', !line);
   }
 
   showOverlay({ title, message, button = 'OK', onClick }) {
@@ -63,10 +125,31 @@ class UI {
   hideOverlay() { this.overlay.classList.add('hidden'); }
 
   handleGameEnd(detail) {
+    const wave = detail.wave ?? 0;
+    const score = detail.score ?? 0;
+    let rank = null;
+    if (typeof addHighScore === 'function') {
+      const result = addHighScore({
+        wave,
+        score,
+        win: !!detail.win,
+        reason: detail.reason,
+      });
+      rank = result.rank;
+    }
     const title = detail.win ? 'Victory!' : 'Game Over';
-    const message = detail.win
-      ? `You cleared all 100 waves. Final score: ${detail.score.toLocaleString()}.`
-      : `${detail.reason || 'Run ended.'} Final score: ${detail.score.toLocaleString()}.`;
+    let message = detail.win
+      ? `You cleared all 100 waves.\nWave ${wave} · ${score.toLocaleString()} points remaining.`
+      : `${detail.reason || 'Run ended.'}\nWave ${wave} · ${score.toLocaleString()} points remaining.`;
+
+    const topN = typeof HIGHSCORES_TOP_N !== 'undefined' ? HIGHSCORES_TOP_N : 10;
+    if (rank != null && rank <= topN) {
+      message += `\n\nNew high score! Rank #${rank} on your leaderboard.`;
+    } else if (rank != null) {
+      message += `\n\nRank #${rank} on your leaderboard.`;
+    }
+
+    this.updateIntroBestLine();
     this.showOverlay({
       title, message, button: 'Play Again',
       onClick: () => { this.hideOverlay(); this.game.startNewRun(); },
@@ -117,6 +200,42 @@ class UI {
     this.renderShop();
   }
 
+  onBaseUpgradeClick() {
+    const result = this.game.buyBaseUpgrade();
+    if (!result.ok) {
+      this.game.setBanner(result.reason || 'Cannot upgrade', 1.0);
+      return;
+    }
+    const hp = CONFIG.BASE_UPGRADE?.hpPerPurchase ?? 30;
+    this.game.setBanner(`Base fortified (+${hp} HP)`, 1.2);
+    this.renderShop();
+  }
+
+  renderShopUpgrades(game) {
+    if (!this.shopBaseUpgrade) return;
+    const hpPer = CONFIG.BASE_UPGRADE?.hpPerPurchase ?? 30;
+    if (this.shopBaseHpLabel) {
+      if (game.baseMaxHp > 0) {
+        this.shopBaseHpLabel.textContent = `Base HP: ${Math.ceil(game.baseHp)} / ${game.baseMaxHp}`;
+      } else {
+        this.shopBaseHpLabel.textContent = 'Place your base first';
+      }
+    }
+    const can = game.canBuyBaseUpgrade();
+    const cost = game.baseUpgradeCost();
+    const afford = game.score >= cost;
+    if (!can) {
+      this.shopBaseUpgrade.textContent = 'Max fortify level';
+      this.shopBaseUpgrade.disabled = true;
+    } else if (!afford) {
+      this.shopBaseUpgrade.textContent = `Fortify (+${hpPer} HP) — need ${cost - game.score}`;
+      this.shopBaseUpgrade.disabled = true;
+    } else {
+      this.shopBaseUpgrade.textContent = `Fortify (+${hpPer} HP) — ${cost} pts`;
+      this.shopBaseUpgrade.disabled = false;
+    }
+  }
+
   // Click "Buy" on a shop card. Switch the deck pane into "pick to remove" mode.
   beginPendingBuy(idx) {
     const sc = this.game.shopCards[idx];
@@ -141,6 +260,7 @@ class UI {
   renderShop() {
     const game = this.game;
     this.shopPoints.textContent = String(game.score);
+    this.renderShopUpgrades(game);
 
     // Top: shop offers.
     this.shopList.innerHTML = '';
@@ -194,6 +314,13 @@ class UI {
 
   sync(game) {
     this.elScore.textContent = game.score.toLocaleString();
+    if (this.elBaseHp) {
+      if (game.baseMaxHp > 0) {
+        this.elBaseHp.textContent = `${Math.ceil(game.baseHp)} / ${game.baseMaxHp}`;
+      } else {
+        this.elBaseHp.textContent = '--';
+      }
+    }
     this.elWave.textContent = `${Math.max(0, game.wave)} / ${CONFIG.TOTAL_WAVES}`;
     this.elTier.textContent = String(game.speedTier() + 1);
     this.elPieces.textContent = (game.phase === 'BUILD' || game.phase === 'PLACING_BASE')
@@ -215,7 +342,10 @@ class UI {
     this.drawHoldPiece(game);
     this.renderWavePreview(game);
     this.renderDeckChips(game);
-    this.updateSynergyTooltip(game);
+    if (this.helpBtn) {
+      const canHelp = game.phase !== 'IDLE' && game.phase !== 'GAMEOVER' && game.phase !== 'WIN';
+      this.helpBtn.disabled = !canHelp;
+    }
     if (window.TTD?.mobileControls) {
       window.TTD.mobileControls.syncVisibility();
     }
@@ -223,30 +353,6 @@ class UI {
     if (game.phase === 'SHOP' && !this.shopModal.classList.contains('hidden')) {
       this.shopPoints.textContent = String(game.score);
     }
-  }
-
-  updateSynergyTooltip(game) {
-    if (!this.elSynergyTooltip) return;
-    const show =
-      (game.phase === 'BUILD' || game.phase === 'PLACING_BASE') &&
-      game.input?.mouseGrid;
-    if (!show) {
-      this.elSynergyTooltip.classList.add('hidden');
-      return;
-    }
-    const { x, y } = game.input.mouseGrid;
-    const cell = game.grid.get(x, y);
-    if (!cell || typeof formatSynergyTooltip !== 'function') {
-      this.elSynergyTooltip.classList.add('hidden');
-      return;
-    }
-    const text = formatSynergyTooltip(cell);
-    if (!text) {
-      this.elSynergyTooltip.classList.add('hidden');
-      return;
-    }
-    this.elSynergyTooltip.textContent = text;
-    this.elSynergyTooltip.classList.remove('hidden');
   }
 
   renderDeckChips(game) {

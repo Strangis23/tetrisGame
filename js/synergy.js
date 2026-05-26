@@ -75,25 +75,3 @@ function recalculateGridSynergy(grid) {
     applySynergyToCell(cell, info);
   }
 }
-
-function formatSynergyTooltip(cell) {
-  if (!cell || !cell.synergyMult || cell.synergyMult <= 1.001) return '';
-  const mult = cell.synergyMult.toFixed(2);
-  const atk = cell.synergyAttackMult && cell.synergyAttackMult > 1.001
-    ? ` atk ×${cell.synergyAttackMult.toFixed(2)}` : '';
-  const role = cell.synergyRoleLinks || 0;
-  const cluster = cell.synergyClusterLinks || 0;
-  const parts = [];
-  if (role > 0) parts.push(`${role} ${cell.role} link${role === 1 ? '' : 's'}`);
-  if (cluster > 0) parts.push(`${cluster} neighbor${cluster === 1 ? '' : 's'}`);
-  const detail = parts.length ? ` (${parts.join(', ')})` : '';
-  return `Synergy HP ×${mult}${atk}${detail}`;
-}
-
-function maxSynergyOnCells(cells) {
-  let best = 1;
-  for (const c of cells) {
-    if (c && c.synergyMult > best) best = c.synergyMult;
-  }
-  return best;
-}

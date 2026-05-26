@@ -147,4 +147,23 @@ class Grid {
     this.forEachCell((c, x, y) => { if (c.isBase) out.push({ x, y }); });
     return out;
   }
+
+  countBaseCells() {
+    return this.baseCells().length;
+  }
+
+  // Mirror aggregate base HP pool onto each base cell for HP bars.
+  syncBaseHpDisplay(baseHp, baseMaxHp) {
+    const bases = this.baseCells();
+    if (bases.length === 0) return;
+    const perCellMax = Math.max(1, baseMaxHp / bases.length);
+    const ratio = baseMaxHp > 0 ? Math.max(0, Math.min(1, baseHp / baseMaxHp)) : 0;
+    for (const { x, y } of bases) {
+      const c = this.get(x, y);
+      if (c && c.isBase) {
+        c.maxHp = perCellMax;
+        c.hp = Math.max(0, perCellMax * ratio);
+      }
+    }
+  }
 }

@@ -18,6 +18,7 @@ class Enemy {
     this.x = x; this.y = y;
     this.dead = false;
     this.reachedBase = false;
+    this.atBase = false;
     this.path = null;
     this.pathTargetSig = null; // grid signature when path was computed
     this.repathTimer = 0;
@@ -34,11 +35,38 @@ class Enemy {
   // Override
   update(dt, game) {}
 
-  takeDamage(amount, game) {
-    this.hp -= amount;
+  takeDamage(amount, game, opts = {}) {
+    let dmg = amount;
+    if (opts.sourceRole && typeof getMatchupMultiplier === 'function') {
+      dmg *= getMatchupMultiplier(opts.sourceRole, this);
+    }
+    this.hp -= dmg;
     if (this.hp <= 0) {
       this.dead = true;
     }
+  }
+
+  siegeBase(dt, game) {
+    if (!this.atBase || this.dead) return;
+    this.siegeTimer = (this.siegeTimer || 0) + dt;
+    let dmg = this.stats.attackDmg;
+    let rate = this.stats.attackRate;
+    if (dmg == null || rate == null) {
+      const siege = (CONFIG.BASE_SIEGE && CONFIG.BASE_SIEGE[this.type]) || { dmg: 0.5, rate: 0.8 };
+      dmg = siege.dmg;
+      rate = siege.rate;
+    }
+    if (this.siegeTimer >= rate) {
+      this.siegeTimer = 0;
+      game.damageBase(dmg);
+      game.effects.push({ type: 'spark', x: this.x, y: this.y, t: 0, life: 0.2 });
+    }
+  }
+
+  enterBase(game) {
+    this.atBase = true;
+    this.path = null;
+    this.siegeTimer = 0;
   }
 
   applySlow(factor, duration) {
@@ -74,7 +102,7 @@ class Walker extends Enemy {
   constructor(x, y, wave) { super('walker', x, y, wave); this.pathMode = 'walker'; }
 
   update(dt, game) {
-    if (this.dead || this.reachedBase) return;
+    if (this.dead || this.atBase) return;
     // Slow tick.
     if (this.slowTimer > 0) {
       this.slowTimer -= dt;
@@ -140,7 +168,7 @@ class Walker extends Enemy {
   checkReachedBase(game) {
     const cx = Math.floor(this.x), cy = Math.floor(this.y);
     const c = game.grid.get(cx, cy);
-    if (c && c.isBase) this.reachedBase = true;
+    if (c && c.isBase) this.enterBase(game);
   }
 }
 
@@ -159,7 +187,7 @@ class Brute extends Walker {
   }
 
   update(dt, game) {
-    if (this.dead || this.reachedBase) return;
+    if (this.dead || this.atBase) return;
     // Slow tick.
     if (this.slowTimer > 0) {
       this.slowTimer -= dt;
@@ -224,7 +252,7 @@ class Flyer extends Enemy {
   constructor(x, y, wave) { super('flyer', x, y, wave); }
 
   update(dt, game) {
-    if (this.dead || this.reachedBase) return;
+    if (this.dead || this.atBase) return;
     if (this.slowTimer > 0) {
       this.slowTimer -= dt;
       if (this.slowTimer <= 0) this.slowFactor = 0;
@@ -244,7 +272,7 @@ class Flyer extends Enemy {
     const step = speed * dt;
     if (dist <= step) {
       this.x = tx; this.y = ty;
-      this.reachedBase = true;
+      this.enterBase(game);
     } else {
       this.x += (dx / dist) * step;
       this.y += (dy / dist) * step;
@@ -282,19 +310,28 @@ function makeEnemy(type, grid, wave, opts = {}) {
 }
 
 function applyEliteStats(enemy, wave, baseType) {
-  const cfg = CONFIG.ELITE_BOSS || {};
+  const legacy = CONFIG.ELITE_BOSS || {};
+  const modsTable = CONFIG.ELITE_MODS || {};
+  const mods = modsTable[baseType] || modsTable.default || {};
   const tier = Math.max(1, Math.floor(wave / 10));
-  const tierBonus = 1 + (tier - 1) * (cfg.tierHpBonus || 0.22);
+  const tierBonus = 1 + (tier - 1) * (legacy.tierHpBonus || 0.22);
+  const hpMult = mods.hp ?? legacy.hp ?? 12;
+  const speedMult = mods.speed ?? legacy.speed ?? 1.25;
+  const radiusMult = mods.radius ?? legacy.radius ?? 1.5;
+  const rewardMult = mods.reward ?? legacy.reward ?? 5;
+  const atkMult = mods.attackDmg ?? legacy.attackDmg ?? 2.5;
+  const atkRateMul = mods.attackRateMul ?? legacy.attackRateMul ?? 0.65;
+
   enemy.isElite = true;
   enemy.eliteOf = baseType;
-  enemy.stats.hp = Math.floor(enemy.stats.hp * (cfg.hp || 12) * tierBonus);
-  enemy.stats.speed *= (cfg.speed || 1.25);
-  enemy.stats.reward = Math.floor(enemy.stats.reward * (cfg.reward || 5) * Math.sqrt(tierBonus));
-  enemy.stats.radius *= (cfg.radius || 1.5);
+  enemy.stats.hp = Math.floor(enemy.stats.hp * hpMult * tierBonus);
+  enemy.stats.speed *= speedMult;
+  enemy.stats.reward = Math.floor(enemy.stats.reward * rewardMult * Math.sqrt(tierBonus));
+  enemy.stats.radius *= radiusMult;
   if (enemy.stats.attackDmg) {
-    enemy.stats.attackDmg = Math.ceil(enemy.stats.attackDmg * (cfg.attackDmg || 2.5));
+    enemy.stats.attackDmg = Math.ceil(enemy.stats.attackDmg * atkMult);
     if (enemy.stats.attackRate) {
-      enemy.stats.attackRate *= (cfg.attackRateMul || 0.65);
+      enemy.stats.attackRate *= atkRateMul;
     }
   }
   enemy.maxHp = enemy.stats.hp;

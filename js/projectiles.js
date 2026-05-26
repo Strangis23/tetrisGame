@@ -19,13 +19,14 @@ class Projectile {
     this.t = 0;
     this.dead = false;
     this.hitSet = new Set(); // for pierce
+    this.sourceRole = opts.sourceRole || null;
   }
 
   update(dt, game) {
     this.t += dt;
     if (this.t >= this.life) { this.dead = true; return; }
 
-    if (this.homing && this.target && !this.target.dead && !this.target.reachedBase) {
+    if (this.homing && this.target && !this.target.dead) {
       const dx = this.target.x - this.x, dy = this.target.y - this.y;
       const dist = Math.hypot(dx, dy);
       if (dist > 0.0001) {
@@ -44,7 +45,7 @@ class Projectile {
 
     // Collide with enemies.
     for (const e of game.enemies) {
-      if (e.dead || e.reachedBase) continue;
+      if (e.dead) continue;
       if (this.hitSet.has(e)) continue;
       const dx = e.x - this.x, dy = e.y - this.y;
       const r = (e.stats.radius || 0.4) + this.radius;
@@ -55,7 +56,7 @@ class Projectile {
           this.dead = true;
           return;
         }
-        e.takeDamage(this.damage, game);
+        e.takeDamage(this.damage, game, { sourceRole: this.sourceRole });
         this.hitSet.add(e);
         if (this.pierce > 0) {
           this.pierce--;
@@ -70,10 +71,10 @@ class Projectile {
   explode(game) {
     game.effects.push({ type: 'splash', x: this.x, y: this.y, t: 0, life: 0.35, radius: this.splashRadius });
     for (const e of game.enemies) {
-      if (e.dead || e.reachedBase) continue;
+      if (e.dead) continue;
       const dx = e.x - this.x, dy = e.y - this.y;
       if (dx * dx + dy * dy <= this.splashRadius * this.splashRadius) {
-        e.takeDamage(this.damage, game);
+        e.takeDamage(this.damage, game, { sourceRole: this.sourceRole });
       }
     }
   }

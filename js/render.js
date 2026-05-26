@@ -88,11 +88,11 @@ class Renderer {
       ctx.fillRect(px + 1, py + 1, this.cellPx - 2, this.cellPx - 2);
     }
 
-    const synThreshold = (CONFIG.SYNERGY && CONFIG.SYNERGY.VISUAL_THRESHOLD) || 1.05;
+    const synThreshold = (CONFIG.SYNERGY && CONFIG.SYNERGY.VISUAL_THRESHOLD) || 1.001;
     if (cell.synergyMult && cell.synergyMult > synThreshold) {
-      ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(px + 2.5, py + 2.5, this.cellPx - 5, this.cellPx - 5);
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.95)';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(px + 2, py + 2, this.cellPx - 4, this.cellPx - 4);
     }
 
     // Rarity outline.

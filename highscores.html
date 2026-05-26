@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>High Score — Tetris Tower Defense</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="highscores-page-body">
+<main class="highscores-page">
+  <header class="highscores-page-header">
+    <h1>High Score</h1>
+    <p class="muted">Your best run is ranked by highest <strong>wave</strong> reached, then <strong>points</strong> remaining.</p>
+  </header>
+
+  <section id="highscore-hero" class="highscore-hero hidden" aria-live="polite">
+    <p class="highscore-hero-label">Your best run</p>
+    <div class="highscore-hero-stats">
+      <div class="highscore-stat-block">
+        <span class="highscore-stat-value" id="hero-wave">—</span>
+        <span class="highscore-stat-label">Wave reached</span>
+      </div>
+      <div class="highscore-stat-block">
+        <span class="highscore-stat-value" id="hero-points">—</span>
+        <span class="highscore-stat-label">Points left</span>
+      </div>
+    </div>
+    <p class="highscore-hero-meta">
+      <span id="hero-result"></span>
+      <span class="highscore-hero-date" id="hero-date"></span>
+    </p>
+  </section>
+
+  <section id="highscore-none" class="highscore-none hidden">
+    <p>No high score yet.</p>
+    <p class="muted">Finish a game run and your best wave and remaining points will appear here.</p>
+  </section>
+
+  <details class="highscores-all-runs" id="highscores-all-runs">
+    <summary>All saved runs</summary>
+    <div class="highscores-table-wrap">
+      <table class="highscores-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Wave</th>
+            <th>Points</th>
+            <th>Result</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="highscores-list"></tbody>
+      </table>
+      <p id="highscores-empty-list" class="muted highscores-empty hidden">No runs saved.</p>
+    </div>
+  </details>
+
+  <footer class="highscores-page-footer">
+    <a href="index.html" class="highscores-back-btn">Back to Game</a>
+    <button type="button" id="highscores-clear" class="highscores-clear-btn">Clear all scores</button>
+  </footer>
+</main>
+
+<script src="js/highscores.js?v=14"></script>
+<script src="js/highscores-page.js?v=14"></script>
+</body>
+</html>
