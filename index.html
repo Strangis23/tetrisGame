@@ -10,7 +10,6 @@
 <div id="game-root">
   <div id="canvas-wrap">
     <canvas id="game-canvas"></canvas>
-    <div id="synergy-tooltip" class="synergy-tooltip hidden" aria-live="polite"></div>
     <div id="mobile-controls" class="mobile-controls hidden mode-build" aria-label="Touch controls">
       <div class="mobile-group mobile-group-build">
         <div class="mobile-pad">
@@ -34,47 +33,57 @@
       <div id="overlay-content">
         <h2 id="overlay-title">Tetris Tower Defense</h2>
         <p id="overlay-message">Place your home base anywhere. It will define where the enemies converge — choose wisely.</p>
+        <p id="overlay-best-score" class="overlay-best-score hidden"></p>
         <button id="overlay-button">Start</button>
       </div>
     </div>
   </div>
 
   <aside id="hud">
-    <h1>TTD</h1>
+    <div class="hud-top">
+      <h1>TTD</h1>
+      <div class="hud-top-actions">
+        <a href="highscores.html" id="highscores-btn" class="hud-icon-btn" aria-label="View high score" title="High score">★</a>
+        <button type="button" id="help-btn" class="help-btn" aria-label="Help" aria-expanded="false" title="How to play">?</button>
+      </div>
+    </div>
     <div id="phase-indicator">Place Home Base</div>
 
-    <div class="hud-section">
-      <div class="hud-stat"><span>Score</span><span id="score">0</span></div>
-      <div class="hud-stat"><span>Wave</span><span id="wave">0 / 100</span></div>
-      <div class="hud-stat"><span>Speed Tier</span><span id="speed-tier">1</span></div>
-      <div class="hud-stat"><span>Pieces Left</span><span id="pieces-left">--</span></div>
-      <div class="hud-stat"><span>Enemies Left</span><span id="enemies-left">--</span></div>
-      <div class="hud-stat"><span>Wave Speed (F)</span><span id="wave-speed">1x</span></div>
-    </div>
-
-    <div class="hud-section" id="wave-preview-section">
-      <h3>Next Wave</h3>
-      <div id="wave-preview" class="wave-preview muted">--</div>
+    <div class="hud-section hud-stats-section">
+      <div class="hud-stats-grid">
+        <div class="hud-stat"><span>Score</span><span id="score">0</span></div>
+        <div class="hud-stat"><span>Base HP</span><span id="base-hp">--</span></div>
+        <div class="hud-stat"><span>Wave</span><span id="wave">0 / 100</span></div>
+        <div class="hud-stat"><span>Speed Tier</span><span id="speed-tier">1</span></div>
+        <div class="hud-stat"><span>Pieces Left</span><span id="pieces-left">--</span></div>
+        <div class="hud-stat"><span>Enemies Left</span><span id="enemies-left">--</span></div>
+        <div class="hud-stat"><span>Wave Speed (F)</span><span id="wave-speed">1x</span></div>
+      </div>
     </div>
 
     <div class="hud-section piece-previews">
       <div class="preview-block">
         <h3>Next</h3>
-        <canvas id="next-canvas" width="100" height="100"></canvas>
+        <canvas id="next-canvas" width="72" height="72"></canvas>
       </div>
       <div class="preview-block">
         <h3>Hold (C)</h3>
-        <canvas id="hold-canvas" width="100" height="100"></canvas>
+        <canvas id="hold-canvas" width="72" height="72"></canvas>
       </div>
     </div>
 
-    <div class="hud-section deck-panel">
-      <h3>Deck <span class="muted" id="deck-count"></span></h3>
-      <div id="deck-chips" class="deck-chips"></div>
-    </div>
+    <details class="hud-collapsible hud-section" id="wave-preview-section">
+      <summary>Next Wave</summary>
+      <div id="wave-preview" class="wave-preview muted">--</div>
+    </details>
 
-    <div class="hud-section controls">
-      <h3>Controls</h3>
+    <details class="hud-collapsible hud-section deck-panel">
+      <summary>Deck <span class="muted" id="deck-count"></span></summary>
+      <div id="deck-chips" class="deck-chips"></div>
+    </details>
+
+    <details class="hud-collapsible hud-section controls">
+      <summary>Controls</summary>
       <div class="controls-keyboard">
         <div><kbd>&larr;</kbd> <kbd>&rarr;</kbd> Move</div>
         <div><kbd>&darr;</kbd> Soft drop</div>
@@ -85,14 +94,91 @@
         <div><kbd>P</kbd> Pause</div>
       </div>
       <div class="muted">Click damaged block to repair (10 pts/hp).</div>
-      <div class="muted">Adjacent same-role blocks gain synergy (HP + power).</div>
       <div class="controls-touch-hint muted">Use on-screen controls below the board.</div>
       <label class="mobile-toggle">
         <input type="checkbox" id="mobile-controls-toggle" />
         Mobile controls
       </label>
-    </div>
+    </details>
   </aside>
+</div>
+
+<div id="help-modal" class="hidden" role="dialog" aria-labelledby="help-title" aria-modal="true">
+  <div class="modal-content help-modal-content">
+    <h2 id="help-title">How to Play</h2>
+    <div class="help-body">
+      <section>
+        <h3>Goal</h3>
+        <p>Clear <strong>100 waves</strong> by building defenses with Tetris pieces. Protect your <strong>home base</strong> — the first piece you place.</p>
+        <p class="muted">You lose if base HP hits zero, the base is line-cleared, or blocks reach the spawn zone (top). Enemies on your base deal siege damage over time.</p>
+      </section>
+      <section>
+        <h3>Phases</h3>
+        <ul>
+          <li><strong>Place base</strong> — Drop your first piece anywhere; it becomes your home base.</li>
+          <li><strong>Build</strong> — Place 4 pieces per round from your deck (20 cards, shuffled).</li>
+          <li><strong>Wave</strong> — Enemies path toward the base; placed cells attack by card role.</li>
+          <li><strong>Shop</strong> — Every 5 waves, buy a card and remove one from your deck to swap.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Controls</h3>
+        <ul>
+          <li><kbd>←</kbd> <kbd>→</kbd> move · <kbd>↓</kbd> soft drop · <kbd>Space</kbd> hard drop</li>
+          <li><kbd>↑</kbd> / <kbd>R</kbd> rotate · <kbd>Z</kbd> rotate CCW · <kbd>C</kbd> hold</li>
+          <li><kbd>F</kbd> cycle wave speed (during waves) · <kbd>P</kbd> pause</li>
+          <li>Enable <strong>mobile controls</strong> in the HUD on touch devices.</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Points &amp; shop</h3>
+        <p>Earn points from enemy kills, line clears, and wall passive income each wave. Spend points on card swaps or <strong>Fortify Base</strong> (+30 max base HP per purchase, escalating cost).</p>
+      </section>
+      <section>
+        <h3>Enemy counters</h3>
+        <p>Tower <strong>roles</strong> deal bonus damage to some enemies and reduced damage to others (1.5× weak, 0.55× resist):</p>
+        <ul>
+          <li><strong>Walker</strong> — weak: gunner, shooter · resist: splash, slow</li>
+          <li><strong>Flyer</strong> — weak: sniper, piercer · resist: shooter, splash</li>
+          <li><strong>Brute</strong> — weak: piercer, splash · resist: sniper, gunner</li>
+          <li><strong>Boss</strong> — weak: multishot, slow · resist: shooter, gunner</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Tower roles</h3>
+        <ul>
+          <li><strong>Wall</strong> — High HP, passive income, no attack</li>
+          <li><strong>Shooter</strong> — Basic single-target</li>
+          <li><strong>Sniper</strong> — Long range, high damage</li>
+          <li><strong>Splash</strong> — AoE shells</li>
+          <li><strong>Slow</strong> — Slows nearby enemies</li>
+          <li><strong>Gunner</strong> — Fast fire, all directions</li>
+          <li><strong>Piercer</strong> — Fast shots through multiple enemies</li>
+          <li><strong>Multishot</strong> — Spread fire</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Synergy</h3>
+        <p>Adjacent blocks of the <strong>same role</strong> boost HP and attack power. Synergized cells show a <strong>gold outline</strong> — no pop-up text.</p>
+      </section>
+      <section>
+        <h3>Line clears &amp; repair</h3>
+        <p>Full rows clear for bonus points but <strong>destroy towers</strong> in those rows (cards stay in your deck).</p>
+        <p>During build, click a damaged cell to repair it (costs points per missing HP).</p>
+      </section>
+      <section>
+        <h3>Tips</h3>
+        <ul>
+          <li>Pick a defensible spot for your first piece.</li>
+          <li>Prune weak duplicates in the shop — deck stays at 20 cards.</li>
+          <li>Elite bosses appear every 10 waves from wave 10 onward.</li>
+        </ul>
+      </section>
+    </div>
+    <div class="help-footer">
+      <button type="button" id="help-close">Close</button>
+    </div>
+  </div>
 </div>
 
 <div id="shop-modal" class="hidden">
@@ -101,6 +187,16 @@
       <h2>Card Shop</h2>
       <p class="muted">Wave <span id="shop-wave">5</span> cleared. Buy any card to permanently add it to your deck — but you must remove one of your existing cards in exchange. Higher-wave shops offer rarer cards.</p>
       <div class="hud-stat"><span>Points</span><span id="shop-points">0</span></div>
+    </div>
+    <div class="shop-upgrades" id="shop-upgrades">
+      <h3>Upgrades</h3>
+      <div class="shop-upgrade-row">
+        <div class="shop-upgrade-info">
+          <strong>Fortify Base</strong>
+          <span class="muted" id="shop-base-hp-label">Base HP: --</span>
+        </div>
+        <button type="button" id="shop-base-upgrade">Fortify (+30 HP)</button>
+      </div>
     </div>
     <div class="shop-body">
       <div class="shop-pane">
@@ -132,22 +228,24 @@
   </div>
 </div>
 
-<script src="js/config.js?v=10"></script>
-<script src="js/cards.js?v=10"></script>
-<script src="js/deck.js?v=10"></script>
-<script src="js/synergy.js?v=10"></script>
-<script src="js/grid.js?v=10"></script>
-<script src="js/pieces.js?v=10"></script>
-<script src="js/pathfinding.js?v=10"></script>
-<script src="js/projectiles.js?v=10"></script>
-<script src="js/enemies.js?v=10"></script>
-<script src="js/towers.js?v=10"></script>
-<script src="js/waves.js?v=10"></script>
-<script src="js/ui.js?v=10"></script>
-<script src="js/input.js?v=10"></script>
-<script src="js/mobile-controls.js?v=10"></script>
-<script src="js/render.js?v=10"></script>
-<script src="js/game.js?v=10"></script>
-<script src="js/main.js?v=10"></script>
+<script src="js/config.js?v=13"></script>
+<script src="js/matchups.js?v=13"></script>
+<script src="js/highscores.js?v=13"></script>
+<script src="js/cards.js?v=13"></script>
+<script src="js/deck.js?v=13"></script>
+<script src="js/synergy.js?v=13"></script>
+<script src="js/grid.js?v=13"></script>
+<script src="js/pieces.js?v=13"></script>
+<script src="js/pathfinding.js?v=13"></script>
+<script src="js/projectiles.js?v=13"></script>
+<script src="js/enemies.js?v=13"></script>
+<script src="js/towers.js?v=13"></script>
+<script src="js/waves.js?v=13"></script>
+<script src="js/ui.js?v=13"></script>
+<script src="js/input.js?v=13"></script>
+<script src="js/mobile-controls.js?v=13"></script>
+<script src="js/render.js?v=13"></script>
+<script src="js/game.js?v=13"></script>
+<script src="js/main.js?v=13"></script>
 </body>
 </html>

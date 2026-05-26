@@ -73,14 +73,14 @@ const CONFIG = {
 
   // Enemy stats. Speed in cells/second (multiplied by ENEMY_SPEED_MUL[tier]).
   ENEMY_STATS: {
-    walker: { hp: 28, speed: 2.2, reward: 6, color: '#dc2626', radius: 0.36 },
-    flyer:  { hp: 16, speed: 3.2, reward: 8, color: '#f472b6', radius: 0.32 },
-    brute:  { hp: 100, speed: 0.95, reward: 15, color: '#7c2d12', radius: 0.46, attackDmg: 1, attackRate: 0.7 },
-    boss:   { hp: 700, speed: 0.85, reward: 150, color: '#581c87', radius: 0.7, attackDmg: 2, attackRate: 0.5 },
+    walker: { hp: 28, speed: 2.2, reward: 8, color: '#dc2626', radius: 0.36 },
+    flyer:  { hp: 16, speed: 3.2, reward: 10, color: '#f472b6', radius: 0.32 },
+    brute:  { hp: 100, speed: 0.95, reward: 19, color: '#7c2d12', radius: 0.46, attackDmg: 1, attackRate: 0.7 },
+    boss:   { hp: 700, speed: 0.85, reward: 185, color: '#581c87', radius: 0.7, attackDmg: 2, attackRate: 0.5 },
   },
   ENEMY_HP_GROWTH: 0.07, // hp = base * (1 + (wave - 1) * GROWTH)
   // Kill reward scales with wave: reward * (1 + (wave - 1) * SCALE)
-  KILL_REWARD_WAVE_SCALE: 0.012,
+  KILL_REWARD_WAVE_SCALE: 0.015,
 
   // Elite boss multipliers applied on top of the base enemy type every 10 waves.
   ELITE_BOSS: {
@@ -92,11 +92,38 @@ const CONFIG = {
     attackRateMul: 0.65,
     tierHpBonus: 0.22, // extra HP per boss tier (wave 10, 20, 30…)
   },
+  // Per-type elite overrides (flyer elites were overtuned).
+  ELITE_MODS: {
+    default: { hp: 12, speed: 1.25, radius: 1.5, reward: 5, attackDmg: 2.5, attackRateMul: 0.65 },
+    flyer:   { hp: 5, speed: 1.08, radius: 1.25, reward: 3, attackDmg: 1.8, attackRateMul: 0.75 },
+  },
   BOSS_WAVE_TYPES: ['brute', 'flyer', 'walker'],
 
-  // Tetris-style line clear bonuses (1/2/3/4 lines). Tuned down so shop buys
-  // aren't trivially affordable from line clears alone.
-  LINE_BONUS: { 1: 40, 2: 120, 3: 200, 4: 320 },
+  // Home base HP pool and shop fortify.
+  BASE_UPGRADE: {
+    hpPerPurchase: 30,
+    baseCost: 180,
+    costScale: 1.4,
+    maxPurchases: 15,
+  },
+  // Siege DPS when enemy is on a base cell (types without attackDmg use these).
+  BASE_SIEGE: {
+    walker: { dmg: 0.6, rate: 0.75 },
+    flyer:  { dmg: 0.4, rate: 0.85 },
+  },
+
+  // Tower role vs enemy type: weak = bonus damage, resist = reduced damage.
+  ENEMY_MATCHUPS: {
+    walker: { weak: ['gunner', 'shooter'], resist: ['splash', 'slow'] },
+    flyer:  { weak: ['sniper', 'piercer'], resist: ['shooter', 'splash'] },
+    brute:  { weak: ['piercer', 'splash'], resist: ['sniper', 'gunner'] },
+    boss:   { weak: ['multishot', 'slow'], resist: ['shooter', 'gunner'] },
+  },
+  MATCHUP_WEAK_MULT: 1.5,
+  MATCHUP_RESIST_MULT: 0.55,
+
+  // Tetris-style line clear bonuses (1/2/3/4 lines).
+  LINE_BONUS: { 1: 50, 2: 150, 3: 250, 4: 400 },
 
   // Spawn schedule.
   WAVE_SPAWN_INTERVAL: 0.55,
@@ -116,8 +143,7 @@ const CONFIG = {
     CLUSTER_BONUS_PER_NEIGHBOR: 0.05,
     CLUSTER_CAP: 4,
     MAX_MULT: 1.75,
-    VISUAL_THRESHOLD: 1.05,
-    BANNER_THRESHOLD: 1.25,
+    VISUAL_THRESHOLD: 1.001,
   },
 };
 

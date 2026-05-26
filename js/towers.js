@@ -40,7 +40,7 @@ function applyHpDamage(game, x, y, cell, dmg) {
 function applyProximityDamage(game, dt) {
   if (!game || !game.enemies || !game.grid || dt <= 0) return;
   for (const e of game.enemies) {
-    if (e.dead || e.reachedBase) continue;
+    if (e.dead) continue;
     const dps = PROX_DPS[e.type] || 0;
     if (dps <= 0) continue;
     const grid = game.grid;
@@ -110,7 +110,7 @@ function rarityProjectileColor(cell) {
 function nearestEnemy(cx, cy, range, enemies, predicate = null) {
   let best = null, bestD = range * range;
   for (const e of enemies) {
-    if (e.dead || e.reachedBase) continue;
+    if (e.dead) continue;
     if (predicate && !predicate(e)) continue;
     const dx = e.x - cx, dy = e.y - cy;
     const d2 = dx * dx + dy * dy;
@@ -140,6 +140,7 @@ function fireProjectile(game, cx, cy, target, opts) {
     color: opts.color || '#ffffff',
     radius: opts.radius || 0.20,
     life: opts.life || 1.4,
+    sourceRole: opts.sourceRole || null,
   }));
 }
 
@@ -154,6 +155,7 @@ function shooterTick(game, cell, cx, cy, stats, enemies) {
     color: rarityProjectileColor(cell),
     radius: 0.16,
     life: 1.0,
+    sourceRole: 'shooter',
   });
   muzzleFlash(game, cx, cy, rarityProjectileColor(cell));
   cell.tower.cooldown = (stats.fireRate || 1.0) / eff;
@@ -165,7 +167,7 @@ function sniperTick(game, cell, cx, cy, stats, enemies) {
   let target = null, bestHp = -1;
   const range = stats.range || 0;
   for (const e of enemies) {
-    if (e.dead || e.reachedBase) continue;
+    if (e.dead) continue;
     const dx = e.x - cx, dy = e.y - cy;
     if (dx*dx + dy*dy <= range * range) {
       if (e.hp > bestHp) { bestHp = e.hp; target = e; }
@@ -180,6 +182,7 @@ function sniperTick(game, cell, cx, cy, stats, enemies) {
     color: CONFIG.COLORS.I,
     radius: 0.20,
     life: 1.4,
+    sourceRole: 'sniper',
   });
   muzzleFlash(game, cx, cy, CONFIG.COLORS.I);
   cell.tower.cooldown = (stats.fireRate || 1.0) / eff;
@@ -198,6 +201,7 @@ function splashTick(game, cell, cx, cy, stats, enemies) {
     color: CONFIG.COLORS.T,
     radius: 0.28,
     life: 2.0,
+    sourceRole: 'splash',
   });
   muzzleFlash(game, cx, cy, CONFIG.COLORS.T);
   cell.tower.cooldown = (stats.fireRate || 1.0) / eff;
@@ -215,6 +219,7 @@ function gunnerTick(game, cell, cx, cy, stats, enemies) {
     color: CONFIG.COLORS.L,
     radius: 0.16,
     life: 0.9,
+    sourceRole: 'gunner',
   });
   muzzleFlash(game, cx, cy, CONFIG.COLORS.L);
   cell.tower.cooldown = (stats.fireRate || 0.3) / eff;
@@ -226,7 +231,7 @@ function slowTick(game, cell, cx, cy, stats, enemies, dt) {
   const r2 = (stats.range || 0) * (stats.range || 0);
   const slowFactor = (stats.slowFactor || 0.4) * eff;
   for (const e of enemies) {
-    if (e.dead || e.reachedBase) continue;
+    if (e.dead) continue;
     const dx = e.x - cx, dy = e.y - cy;
     if (dx*dx + dy*dy <= r2) {
       e.applySlow(slowFactor, 0.3);
@@ -237,9 +242,9 @@ function slowTick(game, cell, cx, cy, stats, enemies, dt) {
     if (cell.tower.cooldown > 0) return;
     let hit = 0;
     for (const e of enemies) {
-      if (e.dead || e.reachedBase) continue;
+      if (e.dead) continue;
       const dx = e.x - cx, dy = e.y - cy;
-      if (dx*dx + dy*dy <= r2) { e.takeDamage(stats.damage * eff, game); hit++; }
+      if (dx*dx + dy*dy <= r2) { e.takeDamage(stats.damage * eff, game, { sourceRole: 'slow' }); hit++; }
     }
     if (hit > 0) {
       game.effects.push({ type: 'splash', x: cx, y: cy, t: 0, life: 0.3, radius: stats.range });
@@ -260,6 +265,7 @@ function piercerTick(game, cell, cx, cy, stats, enemies) {
     color: CONFIG.COLORS.I,
     radius: 0.16,
     life: 1.5,
+    sourceRole: 'piercer',
   });
   muzzleFlash(game, cx, cy, CONFIG.COLORS.I);
   cell.tower.cooldown = (stats.fireRate || 0.7) / eff;
@@ -287,6 +293,7 @@ function multishotTick(game, cell, cx, cy, stats, enemies) {
       color: CONFIG.COLORS.S,
       radius: 0.14,
       life: 1.0,
+      sourceRole: 'multishot',
     }));
   }
   muzzleFlash(game, cx, cy, CONFIG.COLORS.S);

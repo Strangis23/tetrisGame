@@ -30,6 +30,7 @@
   }
   requestAnimationFrame(frame);
 
+  ui.updateIntroBestLine();
   ui.showOverlay({
     title: 'Tetris Tower Defense',
     message:
