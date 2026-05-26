@@ -20,6 +20,7 @@ class Deck {
       const j = Math.floor(Math.random() * (i + 1));
       [this._queue[i], this._queue[j]] = [this._queue[j], this._queue[i]];
     }
+    this._peekTail = null;
   }
 
   draw() {
@@ -27,24 +28,22 @@ class Deck {
     return this._queue.shift();
   }
 
-  // Look ahead at the next n cards without consuming them. If the queue would
-  // run out, peek through the implicit reshuffle (a snapshot — not perfectly
-  // realistic, but good enough for a 1-card preview).
+  // Stable preview of the next reshuffle when the queue runs dry (cached until
+  // draw/reshuffle/replace invalidates it).
+  _ensurePeekTail() {
+    if (this._peekTail) return;
+    this._peekTail = this.cards.slice();
+    for (let i = this._peekTail.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this._peekTail[i], this._peekTail[j]] = [this._peekTail[j], this._peekTail[i]];
+    }
+  }
+
+  // Look ahead at the next n cards without consuming them.
   peek(n = 1) {
     if (this._queue.length >= n) return this._queue.slice(0, n);
-    const out = this._queue.slice();
-    while (out.length < n) {
-      // Best-effort preview: append a fresh shuffle of the deck (without
-      // consuming our actual reshuffle order). Caller treats this as
-      // approximate.
-      const extra = this.cards.slice();
-      for (let i = extra.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [extra[i], extra[j]] = [extra[j], extra[i]];
-      }
-      out.push(...extra);
-    }
-    return out.slice(0, n);
+    this._ensurePeekTail();
+    return [...this._queue, ...this._peekTail].slice(0, n);
   }
 
   // Swap one card out of the deck for another. Also strips the removed card
@@ -54,6 +53,7 @@ class Deck {
     if (idx < 0) return false;
     this.cards.splice(idx, 1, newCard);
     this._queue = this._queue.filter((c) => c.id !== removeId);
+    this._peekTail = null;
     return true;
   }
 

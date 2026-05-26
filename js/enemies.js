@@ -63,7 +63,10 @@ class Enemy {
     }
     // If stuck for 8 seconds, despawn quietly (no reward) — keeps wave-end
     // detection working even when the player has perfectly walled off the base.
-    if (this._stuckTime > 8) this.dead = true;
+    if (this._stuckTime > 8) {
+      this.despawned = true;
+      this.dead = true;
+    }
   }
 }
 
@@ -263,16 +266,38 @@ class Boss extends Brute {
   }
 }
 
-function makeEnemy(type, grid, wave) {
-  // Spawn at the top of row 0 (within the spawn buffer so enemies can sidestep
-  // along it to find a column with an opening downward).
+function makeEnemy(type, grid, wave, opts = {}) {
   const col = Math.floor(Math.random() * grid.w);
   const x = col + 0.5, y = 0.4;
+  let enemy;
   switch (type) {
-    case 'walker': return new Walker(x, y, wave);
-    case 'flyer':  return new Flyer(x, y, wave);
-    case 'brute':  return new Brute(x, y, wave);
-    case 'boss':   return new Boss(x, y, wave);
-    default: return new Walker(x, y, wave);
+    case 'walker': enemy = new Walker(x, y, wave); break;
+    case 'flyer':  enemy = new Flyer(x, y, wave); break;
+    case 'brute':  enemy = new Brute(x, y, wave); break;
+    case 'boss':   enemy = new Boss(x, y, wave); break;
+    default: enemy = new Walker(x, y, wave);
   }
+  if (opts.elite) applyEliteStats(enemy, wave, type);
+  return enemy;
+}
+
+function applyEliteStats(enemy, wave, baseType) {
+  const cfg = CONFIG.ELITE_BOSS || {};
+  const tier = Math.max(1, Math.floor(wave / 10));
+  const tierBonus = 1 + (tier - 1) * (cfg.tierHpBonus || 0.22);
+  enemy.isElite = true;
+  enemy.eliteOf = baseType;
+  enemy.stats.hp = Math.floor(enemy.stats.hp * (cfg.hp || 12) * tierBonus);
+  enemy.stats.speed *= (cfg.speed || 1.25);
+  enemy.stats.reward = Math.floor(enemy.stats.reward * (cfg.reward || 5) * Math.sqrt(tierBonus));
+  enemy.stats.radius *= (cfg.radius || 1.5);
+  if (enemy.stats.attackDmg) {
+    enemy.stats.attackDmg = Math.ceil(enemy.stats.attackDmg * (cfg.attackDmg || 2.5));
+    if (enemy.stats.attackRate) {
+      enemy.stats.attackRate *= (cfg.attackRateMul || 0.65);
+    }
+  }
+  enemy.maxHp = enemy.stats.hp;
+  enemy.hp = enemy.stats.hp;
+  enemy.stats.color = '#fbbf24';
 }

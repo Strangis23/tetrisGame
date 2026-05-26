@@ -82,6 +82,18 @@ const CONFIG = {
   // Kill reward scales with wave: reward * (1 + (wave - 1) * SCALE)
   KILL_REWARD_WAVE_SCALE: 0.012,
 
+  // Elite boss multipliers applied on top of the base enemy type every 10 waves.
+  ELITE_BOSS: {
+    hp: 12,
+    speed: 1.25,
+    reward: 5,
+    radius: 1.5,
+    attackDmg: 2.5,
+    attackRateMul: 0.65,
+    tierHpBonus: 0.22, // extra HP per boss tier (wave 10, 20, 30…)
+  },
+  BOSS_WAVE_TYPES: ['brute', 'flyer', 'walker'],
+
   // Tetris-style line clear bonuses (1/2/3/4 lines). Tuned down so shop buys
   // aren't trivially affordable from line clears alone.
   LINE_BONUS: { 1: 40, 2: 120, 3: 200, 4: 320 },
@@ -96,6 +108,17 @@ const CONFIG = {
   // Visuals
   PROJECTILE_SPEED: 12,
   HOVER_RANGE_INDICATOR: true,
+
+  // Adjacency synergy: same-role links + cluster density.
+  SYNERGY: {
+    ROLE_BONUS_PER_LINK: 0.12,
+    ROLE_LINK_CAP: 4,
+    CLUSTER_BONUS_PER_NEIGHBOR: 0.05,
+    CLUSTER_CAP: 4,
+    MAX_MULT: 1.75,
+    VISUAL_THRESHOLD: 1.05,
+    BANNER_THRESHOLD: 1.25,
+  },
 };
 
 // Tetromino shape definitions (4 rotation states each, 4x4 grids of 0/1).

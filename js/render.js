@@ -19,9 +19,12 @@ class Renderer {
       this.drawGhost(game);
       this.drawActivePiece(game.activePiece, game.phase === 'PLACING_BASE');
     }
-    this.drawEnemies(game);
-    this.drawProjectiles(game);
-    this.drawEffects(game);
+    if (game.phase === 'WAVE') {
+      this.drawEnemies(game);
+      this.drawProjectiles(game);
+      this.drawCombatEffects(game);
+    }
+    this.drawBuildEffects(game);
     this.drawWaveBanner(game);
   }
 
@@ -83,6 +86,13 @@ class Renderer {
       const damageRatio = 1 - Math.max(0, cell.hp / cell.maxHp);
       ctx.fillStyle = `rgba(0,0,0,${0.45 * damageRatio})`;
       ctx.fillRect(px + 1, py + 1, this.cellPx - 2, this.cellPx - 2);
+    }
+
+    const synThreshold = (CONFIG.SYNERGY && CONFIG.SYNERGY.VISUAL_THRESHOLD) || 1.05;
+    if (cell.synergyMult && cell.synergyMult > synThreshold) {
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px + 2.5, py + 2.5, this.cellPx - 5, this.cellPx - 5);
     }
 
     // Rarity outline.
@@ -191,6 +201,18 @@ class Renderer {
       const cx = e.x * this.cellPx;
       const cy = e.y * this.cellPx;
       const r = e.stats.radius * this.cellPx;
+      if (e.isElite) {
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + 8, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       // Body
       ctx.fillStyle = e.stats.color;
       ctx.beginPath();
@@ -205,8 +227,14 @@ class Renderer {
       ctx.font = `${Math.floor(r)}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const sym = e.type === 'flyer' ? '✦' : e.type === 'brute' ? '■' : e.type === 'boss' ? '✶' : '●';
+      const sym = e.isElite ? '✶'
+        : (e.type === 'flyer' ? '✦' : e.type === 'brute' ? '■' : e.type === 'boss' ? '✶' : '●');
       ctx.fillText(sym, cx, cy);
+      if (e.isElite) {
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.fillText('BOSS', cx, cy - r - 10);
+      }
       // HP bar
       if (e.hp < e.maxHp) {
         const w = this.cellPx * 0.7;
@@ -270,9 +298,22 @@ class Renderer {
     }
   }
 
-  drawEffects(game) {
+  drawCombatEffects(game) {
     const ctx = this.ctx;
     for (const fx of game.effects) {
+      if (fx.type === 'lineClear') continue;
+      this.drawEffect(ctx, fx);
+    }
+  }
+
+  drawBuildEffects(game) {
+    const ctx = this.ctx;
+    for (const fx of game.effects) {
+      if (fx.type === 'lineClear') this.drawEffect(ctx, fx);
+    }
+  }
+
+  drawEffect(ctx, fx) {
       // All effect positions are cell-center floats (or row index for lineClear).
       const cx = fx.x * this.cellPx;
       const cy = fx.y * this.cellPx;
@@ -306,7 +347,6 @@ class Renderer {
         ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.7})`;
         ctx.fillRect(0, fx.y * this.cellPx, this.canvas.width, this.cellPx);
       }
-    }
   }
 
   drawWaveBanner(game) {

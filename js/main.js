@@ -9,9 +9,11 @@
   const renderer = new Renderer(ctx, canvas);
   const ui = new UI(game);
   const input = new Input(game, canvas);
+  const canvasWrap = document.getElementById('canvas-wrap');
+  const mobileControls = new MobileControls(game, input, canvasWrap);
 
   // Expose for debugging / cross-module hooks.
-  window.TTD = { game, renderer, ui, input, CONFIG };
+  window.TTD = { game, renderer, ui, input, mobileControls, CONFIG };
 
   let last = performance.now();
   function frame(now) {

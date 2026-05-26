@@ -5,12 +5,23 @@ class Input {
     this.game = game;
     game.input = this;
     this.canvas = canvas;
-    this.held = {};   // keyCode -> timeHeld
-    this.dasDelay = 0.16;     // initial delay before auto-repeat
-    this.dasInterval = 0.04;  // repeat interval
+    this.held = {};   // action id -> timeHeld
+    this.dasDelay = 0.16;
+    this.dasInterval = 0.04;
     this.repeatTimers = {};
 
-    this.mouseGrid = null; // { x, y } in grid coords for hover
+    this.mouseGrid = null;
+
+    this._keyToAction = {
+      ArrowLeft: 'left',
+      ArrowRight: 'right',
+      ArrowDown: 'down',
+      ArrowUp: 'rotate',
+      KeyR: 'rotate',
+      KeyZ: 'rotateCCW',
+      KeyC: 'hold',
+      Space: 'hardDrop',
+    };
 
     window.addEventListener('keydown', (e) => this.onKeyDown(e));
     window.addEventListener('keyup', (e) => this.onKeyUp(e));
@@ -21,6 +32,11 @@ class Input {
     setInterval(() => this.tick(0.016), 16);
   }
 
+  canControlPiece() {
+    const p = this.game.phase;
+    return p === 'PLACING_BASE' || p === 'BUILD';
+  }
+
   onClick(e) {
     const rect = this.canvas.getBoundingClientRect();
     const sx = (e.clientX - rect.left) / rect.width * this.canvas.width;
@@ -28,8 +44,6 @@ class Input {
     const gx = Math.floor(sx / CONFIG.CELL_PX);
     const gy = Math.floor(sy / CONFIG.CELL_PX);
     if (!this.game.repairCell) return;
-    // Only react when there's actually a damaged block under the cursor; clicks
-    // on empty cells or full-HP blocks are no-ops (no banner spam).
     const cell = this.game.grid && this.game.grid.get(gx, gy);
     if (!cell || cell.hp >= cell.maxHp) return;
     const result = this.game.repairCell(gx, gy);
@@ -52,7 +66,6 @@ class Input {
     if (e.repeat) return;
     const k = e.code;
 
-    // Always-allowed shortcuts.
     if (k === 'KeyP') { this.game.togglePause(); return; }
     if (k === 'KeyF') { this.game.cycleWaveSpeed(); return; }
 
@@ -60,41 +73,67 @@ class Input {
       if (k === 'Enter' || k === 'Space') { this.game.startNewRun(); }
       return;
     }
-    if (this.game.phase !== 'PLACING_BASE' && this.game.phase !== 'BUILD') return;
+    if (!this.canControlPiece()) return;
 
-    this.held[k] = 0;
-    this.handleAction(k);
+    const action = this._keyToAction[k];
+    if (!action) return;
+    this.held[action] = 0;
+    this.performAction(action);
   }
 
-  onKeyUp(e) { delete this.held[e.code]; delete this.repeatTimers[e.code]; }
+  onKeyUp(e) {
+    const action = this._keyToAction[e.code];
+    if (action) {
+      delete this.held[action];
+      delete this.repeatTimers[action];
+    }
+  }
 
-  handleAction(k) {
+  performAction(action) {
     const g = this.game;
-    switch (k) {
-      case 'ArrowLeft':  g.movePiece(-1, 0); break;
-      case 'ArrowRight': g.movePiece(1, 0); break;
-      case 'ArrowDown':  g.softDrop(true); break;
-      case 'ArrowUp':
-      case 'KeyR':       g.rotatePiece(1); break;
-      case 'KeyZ':       g.rotatePiece(-1); break;
-      case 'KeyC':       g.holdSwap(); break;
-      case 'Space':      g.hardDrop(); break;
+    switch (action) {
+      case 'pause':
+        g.togglePause();
+        return;
+      case 'waveSpeed':
+        g.cycleWaveSpeed();
+        return;
+      case 'left':       if (!this.canControlPiece()) return; g.movePiece(-1, 0); break;
+      case 'right':      if (!this.canControlPiece()) return; g.movePiece(1, 0); break;
+      case 'down':       if (!this.canControlPiece()) return; g.softDrop(true); break;
+      case 'rotate':     if (!this.canControlPiece()) return; g.rotatePiece(1); break;
+      case 'rotateCCW':  if (!this.canControlPiece()) return; g.rotatePiece(-1); break;
+      case 'hold':       if (!this.canControlPiece()) return; g.holdSwap(); break;
+      case 'hardDrop':   if (!this.canControlPiece()) return; g.hardDrop(); break;
+    }
+  }
+
+  holdAction(action, on) {
+    if (on) {
+      if (!(action in this.held)) this.held[action] = 0;
+      this.performAction(action);
+    } else {
+      delete this.held[action];
+      delete this.repeatTimers[action];
+      if (action === 'down') this.game.softDrop(false);
     }
   }
 
   tick(dt) {
-    for (const k in this.held) {
-      this.held[k] += dt;
-      if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowDown') {
-        if (this.held[k] >= this.dasDelay) {
-          this.repeatTimers[k] = (this.repeatTimers[k] || 0) + dt;
-          if (this.repeatTimers[k] >= this.dasInterval) {
-            this.repeatTimers[k] = 0;
-            this.handleAction(k);
+    if (this.game.paused) return;
+    const repeatActions = new Set(['left', 'right', 'down']);
+    for (const action in this.held) {
+      this.held[action] += dt;
+      if (repeatActions.has(action)) {
+        if (this.held[action] >= this.dasDelay) {
+          this.repeatTimers[action] = (this.repeatTimers[action] || 0) + dt;
+          if (this.repeatTimers[action] >= this.dasInterval) {
+            this.repeatTimers[action] = 0;
+            this.performAction(action);
           }
         }
       }
     }
-    if (!('ArrowDown' in this.held)) this.game.softDrop(false);
+    if (!('down' in this.held)) this.game.softDrop(false);
   }
 }

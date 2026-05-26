@@ -38,6 +38,7 @@ html, body {
   justify-content: center;
   gap: 18px;
   padding: 18px;
+  padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
 }
 
 #canvas-wrap {
@@ -50,11 +51,168 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: none;
+  max-width: min(100%, 392px);
+}
+
+#canvas-wrap.mobile-active {
+  padding-bottom: 88px;
+}
+
+.synergy-tooltip {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(11, 16, 32, 0.92);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 5;
+  white-space: nowrap;
+}
+
+.synergy-tooltip.hidden {
+  display: none;
+}
+
+.mobile-controls {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  right: 6px;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.mobile-controls.hidden {
+  display: none;
+}
+
+.mobile-group-build {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+.mobile-group-wave {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.mobile-controls.mode-wave .mobile-group-build {
+  display: none;
+}
+
+.mobile-controls.mode-wave .mobile-group-wave {
+  display: flex;
+}
+
+.mobile-controls .mob-btn {
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(17, 26, 46, 0.88);
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mobile-controls .mob-btn:active {
+  background: rgba(34, 211, 238, 0.25);
+  border-color: var(--accent);
+}
+
+.mobile-controls .mob-pause {
+  background: rgba(51, 65, 85, 0.92);
+  border-color: #475569;
+  font-size: 14px;
+}
+
+.mobile-controls .mob-pause:active {
+  background: rgba(71, 85, 105, 0.95);
+  border-color: var(--muted);
+}
+
+.mobile-controls .mob-speed {
+  font-size: 14px;
+  min-width: 56px;
+}
+
+.mobile-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 48px);
+  grid-template-rows: repeat(2, 48px);
+  gap: 4px;
+}
+
+.mobile-pad .mob-rotate {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.mobile-pad .mob-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.mobile-pad .mob-down {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.mobile-pad .mob-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.mobile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mobile-actions .mob-btn {
+  font-size: 13px;
+  padding: 0 12px;
+}
+
+.mobile-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mobile-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
 }
 
 #game-canvas {
   display: block;
   image-rendering: pixelated;
+  max-width: 100%;
+  height: auto;
 }
 
 #hud {
@@ -90,12 +248,29 @@ html, body {
 
 #phase-indicator {
   text-align: center;
-  padding: 8px;
+  padding: 10px 8px;
   background: var(--bg-2);
   border-radius: 6px;
   font-weight: 600;
+  font-size: 14px;
   letter-spacing: 1px;
   border: 1px solid var(--line);
+}
+
+#phase-indicator[data-phase="PLACING_BASE"],
+#phase-indicator[data-phase="BUILD"] {
+  border-color: rgba(34, 211, 238, 0.55);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.12);
+}
+
+#phase-indicator[data-phase="WAVE"] {
+  border-color: rgba(239, 68, 68, 0.55);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.12);
+}
+
+#phase-indicator[data-phase="SHOP"] {
+  border-color: rgba(251, 191, 36, 0.55);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.12);
 }
 
 .hud-section {
@@ -119,6 +294,12 @@ html, body {
 .hud-stat span:last-child {
   font-weight: 700;
   color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.controls-touch-hint {
+  display: none;
+  margin-top: 6px;
 }
 
 #next-canvas, #hold-canvas {
@@ -241,6 +422,8 @@ button {
   font-size: 14px;
   letter-spacing: 1px;
   transition: transform 0.1s, box-shadow 0.1s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:hover:not(:disabled) {
@@ -348,17 +531,24 @@ button:disabled {
   background: var(--bg-1);
   border: 2px solid var(--line);
   border-radius: 10px;
-  padding: 10px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
   cursor: pointer;
   transition: transform 0.1s, box-shadow 0.15s;
   position: relative;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .card:hover:not(.disabled) {
   transform: translateY(-2px);
+}
+
+.card:active:not(.disabled) {
+  transform: scale(0.98);
+  filter: brightness(1.08);
 }
 
 .card .rarity-tag {
@@ -432,8 +622,9 @@ button:disabled {
 .card .cost { font-weight: 700; color: var(--gold); }
 
 .card button {
-  font-size: 11px;
-  padding: 4px 10px;
+  font-size: 12px;
+  padding: 8px 12px;
+  min-height: 44px;
   background: var(--accent);
   color: var(--bg-0);
 }
@@ -450,14 +641,84 @@ button:disabled {
 }
 .card.removable:hover { box-shadow: 0 0 12px rgba(239, 68, 68, 0.4); }
 
+.shop-deck-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.deck-sort-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.deck-sort-bar .sort-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.deck-sort-bar .sort-btn {
+  font-size: 10px;
+  padding: 3px 8px;
+  background: var(--bg-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0;
+  font-weight: 600;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.deck-sort-bar .sort-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  transform: none;
+  box-shadow: none;
+}
+
+.deck-sort-bar .sort-btn.active {
+  background: rgba(34, 211, 238, 0.15);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.deck-sort-bar .sort-toggle {
+  min-width: 28px;
+  font-family: monospace;
+}
+
 .shop-footer {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 12px;
   border-top: 1px solid var(--line);
   padding-top: 12px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  flex: 0 0 auto;
 }
-.shop-footer button { flex: 1; }
+
+.shop-footer button {
+  flex: 1;
+  min-height: 44px;
+}
+
+#shop-pause {
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  flex: 0 1 auto;
+  min-width: 88px;
+}
+
 #shop-cancel-buy { background: var(--danger); color: var(--text); }
 
 /* Persistent HUD deck panel chips */
@@ -558,4 +819,115 @@ button:disabled {
 @media (max-width: 1100px) {
   #game-root { flex-direction: column; align-items: center; padding: 8px; }
   #hud { width: 100%; max-width: 480px; }
+  #canvas-wrap.mobile-active {
+    padding-bottom: 96px;
+  }
+}
+
+@media (max-width: 640px) {
+  html, body {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  #game-root {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-y: visible;
+    padding: 8px;
+    gap: 10px;
+  }
+
+  #hud {
+    max-width: 100%;
+  }
+
+  .piece-previews {
+    grid-template-columns: 1fr;
+  }
+
+  #overlay-content {
+    padding: 20px 16px;
+    max-width: 95%;
+    margin: 12px;
+  }
+
+  #overlay-button {
+    min-height: 48px;
+    width: 100%;
+  }
+
+  .synergy-tooltip {
+    font-size: 11px;
+    max-width: 90%;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .shop-modal-content {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+    padding: 16px;
+  }
+
+  .shop-body {
+    grid-template-columns: 1fr;
+  }
+
+  #shop-list,
+  .shop-grid,
+  .deck-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shop-header p.muted {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .shop-footer {
+    position: sticky;
+    bottom: 0;
+    background: rgba(17, 26, 46, 0.98);
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    z-index: 2;
+  }
+
+  .deck-sort-bar .sort-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  .mobile-controls .mob-btn,
+  .shop-footer button,
+  .card button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 400px) {
+  .deck-chips {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .controls .controls-keyboard {
+    display: none;
+  }
+
+  .controls-touch-hint {
+    display: block;
+  }
+}
+
+.controls-keyboard {
+  display: block;
 }

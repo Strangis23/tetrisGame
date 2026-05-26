@@ -143,6 +143,9 @@ class Game {
 
   // ---------- main update ----------
   update(dt) {
+    if (this.phase !== 'WAVE' && this.projectiles.length > 0) {
+      this.projectiles = [];
+    }
     if (this.banner) {
       this.banner.t += dt;
       if (this.banner.t >= this.banner.life) this.banner = null;
@@ -182,6 +185,15 @@ class Game {
 
     this.grid.registerPlacement(placed, piece.card, isBase);
 
+    const lockedCells = placed.map(({ x, y }) => this.grid.get(x, y)).filter(Boolean);
+    if (typeof maxSynergyOnCells === 'function') {
+      const peak = maxSynergyOnCells(lockedCells);
+      const threshold = (CONFIG.SYNERGY && CONFIG.SYNERGY.BANNER_THRESHOLD) || 1.25;
+      if (peak >= threshold) {
+        this.setBanner('Synergy! Adjacent blocks strengthen each other.', 1.2);
+      }
+    }
+
     this.activePiece = null;
     if (this.grid.isToppedOut()) {
       this.lose('Top-out: blocks reached the spawn area.');
@@ -200,6 +212,9 @@ class Game {
       if (baseDestroyed) {
         this.lose('Your home base was cleared away with the line!');
         return;
+      }
+      if (typeof recalculateGridSynergy === 'function') {
+        recalculateGridSynergy(this.grid);
       }
     }
 
@@ -225,9 +240,14 @@ class Game {
     this.activePiece = null;
     this.phase = 'WAVE';
     this.enemies = [];
-    this.projectiles = [];
+    this.clearCombatVisuals();
     this.waveSpawner = makeWaveSpawner(this.wave);
-    this.setBanner(`Wave ${this.wave} — Defend!`, 1.6);
+    const bossInfo = typeof getBossWaveInfo === 'function' ? getBossWaveInfo(this.wave) : null;
+    if (bossInfo) {
+      this.setBanner(`BOSS — Elite ${bossInfo.label}!`, 2.2);
+    } else {
+      this.setBanner(`Wave ${this.wave} — Defend!`, 1.6);
+    }
     this.waveStats = { kills: 0, points: 0, income: 0 };
     // Wall passive income at the start of each wave (scaled by per-cell effectiveness).
     let income = 0;
@@ -250,7 +270,7 @@ class Game {
       sp.t += dtScaled;
       while (sp.i < sp.schedule.length && sp.t >= sp.schedule[sp.i].at) {
         const item = sp.schedule[sp.i];
-        this.enemies.push(makeEnemy(item.type, this.grid, this.wave));
+        this.enemies.push(makeEnemy(item.type, this.grid, this.wave, { elite: !!item.elite }));
         sp.i++;
       }
     }
@@ -259,7 +279,7 @@ class Game {
       try { e.update(dtScaled, this); }
       catch (err) { console.error('enemy.update threw:', err, e); e.dead = true; }
     }
-    const killed = this.enemies.filter((e) => e.dead && !e.reachedBase);
+    const killed = this.enemies.filter((e) => e.dead && !e.reachedBase && !e.despawned);
     for (const e of killed) {
       const scale = CONFIG.KILL_REWARD_WAVE_SCALE ?? 0.012;
       const pts = Math.floor(e.stats.reward * (1 + (this.wave - 1) * scale));
@@ -291,6 +311,7 @@ class Game {
   }
 
   endWave() {
+    this.clearCombatVisuals();
     const stats = this.waveStats || { kills: 0, points: 0, income: 0 };
     const summary = `Wave ${this.wave} cleared — ${stats.kills} kills • +${stats.points + stats.income} pts`;
     if (this.wave >= CONFIG.TOTAL_WAVES) {
@@ -308,6 +329,7 @@ class Game {
   }
 
   openShop() {
+    this.clearCombatVisuals();
     this.phase = 'SHOP';
     this.shopCards = generateShopCards(this.wave, CONFIG.SHOP_CARD_COUNT).map((c) => ({ ...c, bought: false }));
     window.dispatchEvent(new CustomEvent('ttd-shop-open', { detail: { wave: this.wave } }));
@@ -329,6 +351,7 @@ class Game {
   }
 
   advanceToNextBuild() {
+    this.clearCombatVisuals();
     this.wave += 1;
     if (this.wave > CONFIG.TOTAL_WAVES) {
       this.phase = 'WIN';
@@ -352,7 +375,17 @@ class Game {
 
   lose(reason) {
     this.phase = 'GAMEOVER';
+    this.clearCombatVisuals();
     this.setBanner('Game Over', 99);
     window.dispatchEvent(new CustomEvent('ttd-game-end', { detail: { win: false, reason, score: this.score } }));
+  }
+
+  // Strip in-flight projectiles and combat VFX when leaving the wave phase.
+  clearCombatVisuals() {
+    this.projectiles = [];
+    this.enemies = [];
+    this.waveSpawner = null;
+    const combatFx = new Set(['muzzle', 'spark', 'splash']);
+    this.effects = this.effects.filter((fx) => !combatFx.has(fx.type));
   }
 }

@@ -10,6 +10,26 @@
 <div id="game-root">
   <div id="canvas-wrap">
     <canvas id="game-canvas"></canvas>
+    <div id="synergy-tooltip" class="synergy-tooltip hidden" aria-live="polite"></div>
+    <div id="mobile-controls" class="mobile-controls hidden mode-build" aria-label="Touch controls">
+      <div class="mobile-group mobile-group-build">
+        <div class="mobile-pad">
+          <button type="button" class="mob-btn mob-rotate" data-action="rotate" aria-label="Rotate">↻</button>
+          <button type="button" class="mob-btn mob-left" data-action="left" aria-label="Move left">◀</button>
+          <button type="button" class="mob-btn mob-down" data-action="down" aria-label="Soft drop">▼</button>
+          <button type="button" class="mob-btn mob-right" data-action="right" aria-label="Move right">▶</button>
+        </div>
+        <div class="mobile-actions">
+          <button type="button" class="mob-btn mob-hold" data-action="hold" aria-label="Hold piece">Hold</button>
+          <button type="button" class="mob-btn mob-drop" data-action="hardDrop" aria-label="Hard drop">Drop</button>
+          <button type="button" class="mob-btn mob-pause" data-action="pause" aria-label="Pause">⏸</button>
+        </div>
+      </div>
+      <div class="mobile-group mobile-group-wave">
+        <button type="button" class="mob-btn mob-pause" data-action="pause" aria-label="Pause">⏸ Pause</button>
+        <button type="button" class="mob-btn mob-speed" data-action="waveSpeed" aria-label="Wave speed">1x</button>
+      </div>
+    </div>
     <div id="overlay" class="hidden">
       <div id="overlay-content">
         <h2 id="overlay-title">Tetris Tower Defense</h2>
@@ -55,14 +75,22 @@
 
     <div class="hud-section controls">
       <h3>Controls</h3>
-      <div><kbd>&larr;</kbd> <kbd>&rarr;</kbd> Move</div>
-      <div><kbd>&darr;</kbd> Soft drop</div>
-      <div><kbd>Space</kbd> Hard drop</div>
-      <div><kbd>&uarr;</kbd> / <kbd>R</kbd> Rotate</div>
-      <div><kbd>C</kbd> Hold piece</div>
-      <div><kbd>F</kbd> Wave speed</div>
-      <div><kbd>P</kbd> Pause</div>
+      <div class="controls-keyboard">
+        <div><kbd>&larr;</kbd> <kbd>&rarr;</kbd> Move</div>
+        <div><kbd>&darr;</kbd> Soft drop</div>
+        <div><kbd>Space</kbd> Hard drop</div>
+        <div><kbd>&uarr;</kbd> / <kbd>R</kbd> Rotate</div>
+        <div><kbd>C</kbd> Hold piece</div>
+        <div><kbd>F</kbd> Wave speed</div>
+        <div><kbd>P</kbd> Pause</div>
+      </div>
       <div class="muted">Click damaged block to repair (10 pts/hp).</div>
+      <div class="muted">Adjacent same-role blocks gain synergy (HP + power).</div>
+      <div class="controls-touch-hint muted">Use on-screen controls below the board.</div>
+      <label class="mobile-toggle">
+        <input type="checkbox" id="mobile-controls-toggle" />
+        Mobile controls
+      </label>
     </div>
   </aside>
 </div>
@@ -80,32 +108,46 @@
         <div id="shop-list" class="shop-grid"></div>
       </div>
       <div class="shop-pane shop-deck-pane" id="shop-deck-pane">
-        <h3 id="shop-deck-title">Your Deck</h3>
-        <p class="muted" id="shop-deck-hint">Click a card to inspect. Click "Buy" on a shop card first to swap.</p>
+        <div class="shop-deck-header">
+          <h3 id="shop-deck-title">Your Deck</h3>
+          <div class="deck-sort-bar" id="deck-sort-bar">
+            <span class="sort-label">Sort:</span>
+            <button type="button" class="sort-btn active" data-sort="shape">Shape</button>
+            <button type="button" class="sort-btn" data-sort="role">Role</button>
+            <button type="button" class="sort-btn" data-sort="rarity">Rarity</button>
+            <button type="button" class="sort-btn" data-sort="name">Name</button>
+            <button type="button" class="sort-btn" data-sort="cost">Cost</button>
+            <button type="button" class="sort-btn sort-toggle" id="sort-direction" title="Toggle ascending/descending">↑</button>
+          </div>
+        </div>
+        <p class="muted" id="shop-deck-hint">Tap "Buy" on a shop card above to start a swap.</p>
         <div id="shop-deck-grid" class="shop-grid deck-grid"></div>
       </div>
     </div>
     <div class="shop-footer">
-      <button id="shop-cancel-buy" class="hidden">Cancel swap</button>
-      <button id="shop-close">Continue to next wave</button>
+      <button type="button" id="shop-pause">Pause</button>
+      <button type="button" id="shop-cancel-buy" class="hidden">Cancel swap</button>
+      <button type="button" id="shop-close">Continue to next wave</button>
     </div>
   </div>
 </div>
 
-<script src="js/config.js?v=6"></script>
-<script src="js/cards.js?v=6"></script>
-<script src="js/deck.js?v=6"></script>
-<script src="js/grid.js?v=6"></script>
-<script src="js/pieces.js?v=6"></script>
-<script src="js/pathfinding.js?v=6"></script>
-<script src="js/projectiles.js?v=6"></script>
-<script src="js/enemies.js?v=6"></script>
-<script src="js/towers.js?v=6"></script>
-<script src="js/waves.js?v=6"></script>
-<script src="js/ui.js?v=6"></script>
-<script src="js/input.js?v=6"></script>
-<script src="js/render.js?v=6"></script>
-<script src="js/game.js?v=6"></script>
-<script src="js/main.js?v=6"></script>
+<script src="js/config.js?v=10"></script>
+<script src="js/cards.js?v=10"></script>
+<script src="js/deck.js?v=10"></script>
+<script src="js/synergy.js?v=10"></script>
+<script src="js/grid.js?v=10"></script>
+<script src="js/pieces.js?v=10"></script>
+<script src="js/pathfinding.js?v=10"></script>
+<script src="js/projectiles.js?v=10"></script>
+<script src="js/enemies.js?v=10"></script>
+<script src="js/towers.js?v=10"></script>
+<script src="js/waves.js?v=10"></script>
+<script src="js/ui.js?v=10"></script>
+<script src="js/input.js?v=10"></script>
+<script src="js/mobile-controls.js?v=10"></script>
+<script src="js/render.js?v=10"></script>
+<script src="js/game.js?v=10"></script>
+<script src="js/main.js?v=10"></script>
 </body>
 </html>

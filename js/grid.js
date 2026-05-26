@@ -73,6 +73,9 @@ class Grid {
     // The first (this.h - rows.length) entries are the original top rows; we need
     // them shifted DOWN by rows.length. The above construction already does that.
     this.cells = newRows;
+    if (destroyed.length > 0 && typeof recalculateGridSynergy === 'function') {
+      recalculateGridSynergy(this);
+    }
     return destroyed;
   }
 
@@ -89,14 +92,19 @@ class Grid {
         shape: card.shape,
         role: card.role,
         rarity: card.rarity,
-        stats: card.stats, // shared reference is fine; stats are read-only at runtime
+        stats: { ...card.stats },
         cardId: card.id,   // for diagnostics only
+        baseMaxHp: baseHp,
         hp: baseHp,
         maxHp: baseHp,
         isBase: !!isBase,
         tower: { cooldown: 0 },
+        synergyMult: 1,
       };
       this.cells[y][x] = cell;
+    }
+    if (typeof recalculateGridSynergy === 'function') {
+      recalculateGridSynergy(this);
     }
   }
 
@@ -119,6 +127,9 @@ class Grid {
     c.hp -= dmg;
     if (c.hp <= 0) {
       this.cells[y][x] = null;
+      if (typeof recalculateGridSynergy === 'function') {
+        recalculateGridSynergy(this);
+      }
       return true;
     }
     return false;

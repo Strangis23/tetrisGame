@@ -17,6 +17,7 @@ class UI {
     this.holdCtx = this.elHoldCanvas ? this.elHoldCanvas.getContext('2d') : null;
     this.elDeckChips = document.getElementById('deck-chips');
     this.elDeckCount = document.getElementById('deck-count');
+    this.elSynergyTooltip = document.getElementById('synergy-tooltip');
 
     this.overlay = document.getElementById('overlay');
     this.overlayTitle = document.getElementById('overlay-title');
@@ -31,12 +32,22 @@ class UI {
     this.shopDeckTitle = document.getElementById('shop-deck-title');
     this.shopDeckHint = document.getElementById('shop-deck-hint');
     this.shopClose = document.getElementById('shop-close');
+    this.shopPause = document.getElementById('shop-pause');
     this.shopCancelBuy = document.getElementById('shop-cancel-buy');
+    this.deckSortBar = document.getElementById('deck-sort-bar');
+    this.sortDirectionBtn = document.getElementById('sort-direction');
 
     this.pendingBuyIndex = -1; // index into game.shopCards waiting for a deck swap
+    this.shopDeckSort = { key: 'shape', asc: true };
 
     this.shopClose.addEventListener('click', () => this.closeShop());
     this.shopCancelBuy.addEventListener('click', () => this.cancelPendingBuy());
+    if (this.shopPause) {
+      this.shopPause.addEventListener('click', () => this.game.togglePause());
+    }
+    if (this.deckSortBar) {
+      this.deckSortBar.addEventListener('click', (e) => this.onDeckSortClick(e));
+    }
 
     window.addEventListener('ttd-shop-open', (ev) => this.openShop(ev.detail.wave));
     window.addEventListener('ttd-game-end', (ev) => this.handleGameEnd(ev.detail));
@@ -67,6 +78,34 @@ class UI {
     this.pendingBuyIndex = -1;
     this.shopModal.classList.remove('hidden');
     this.renderShop();
+  }
+
+  onDeckSortClick(e) {
+    const btn = e.target.closest('.sort-btn');
+    if (!btn) return;
+    if (btn.id === 'sort-direction') {
+      this.shopDeckSort.asc = !this.shopDeckSort.asc;
+    } else if (btn.dataset.sort) {
+      if (this.shopDeckSort.key === btn.dataset.sort) {
+        this.shopDeckSort.asc = !this.shopDeckSort.asc;
+      } else {
+        this.shopDeckSort.key = btn.dataset.sort;
+        this.shopDeckSort.asc = true;
+      }
+    }
+    this.updateSortButtons();
+    this.renderShop();
+  }
+
+  updateSortButtons() {
+    if (!this.deckSortBar) return;
+    for (const btn of this.deckSortBar.querySelectorAll('.sort-btn[data-sort]')) {
+      btn.classList.toggle('active', btn.dataset.sort === this.shopDeckSort.key);
+    }
+    if (this.sortDirectionBtn) {
+      this.sortDirectionBtn.textContent = this.shopDeckSort.asc ? '↑' : '↓';
+      this.sortDirectionBtn.title = this.shopDeckSort.asc ? 'Ascending — click to reverse' : 'Descending — click to reverse';
+    }
   }
   closeShop() {
     this.shopModal.classList.add('hidden');
@@ -131,15 +170,16 @@ class UI {
     const isPending = this.pendingBuyIndex >= 0;
     if (isPending) {
       this.shopDeckTitle.textContent = 'Pick a card to REMOVE';
-      this.shopDeckHint.textContent = 'Click any of your deck cards below to swap it for the shop card.';
+      this.shopDeckHint.textContent = 'Tap any of your deck cards below to swap it for the shop card.';
       this.shopCancelBuy.classList.remove('hidden');
     } else {
       this.shopDeckTitle.textContent = `Your Deck (${game.deck ? game.deck.size() : 0})`;
-      this.shopDeckHint.textContent = 'Click "Buy" on a shop card above to start a swap.';
+      this.shopDeckHint.textContent = 'Tap "Buy" on a shop card above to start a swap.';
       this.shopCancelBuy.classList.add('hidden');
     }
     if (game.deck) {
-      for (const dc of game.deck.list()) {
+      const sorted = sortDeckCards(game.deck.list(), this.shopDeckSort.key, this.shopDeckSort.asc);
+      for (const dc of sorted) {
         const card = makeCardEl(dc, { showCost: false });
         if (isPending) {
           card.classList.add('removable');
@@ -149,6 +189,7 @@ class UI {
         this.shopDeckGrid.appendChild(card);
       }
     }
+    this.updateSortButtons();
   }
 
   sync(game) {
@@ -167,14 +208,45 @@ class UI {
       this.elWaveSpeed.textContent = game.phase === 'WAVE' ? `${game.waveSpeed}x` : `${game.waveSpeed}x (idle)`;
     }
     this.elPhase.textContent = phaseLabel(game.phase);
+    if (this.elPhase) {
+      this.elPhase.dataset.phase = game.phase;
+    }
     this.drawNextPiece(game);
     this.drawHoldPiece(game);
     this.renderWavePreview(game);
     this.renderDeckChips(game);
+    this.updateSynergyTooltip(game);
+    if (window.TTD?.mobileControls) {
+      window.TTD.mobileControls.syncVisibility();
+    }
     // Re-render shop if open and points changed (so cost-based affordability stays fresh).
     if (game.phase === 'SHOP' && !this.shopModal.classList.contains('hidden')) {
       this.shopPoints.textContent = String(game.score);
     }
+  }
+
+  updateSynergyTooltip(game) {
+    if (!this.elSynergyTooltip) return;
+    const show =
+      (game.phase === 'BUILD' || game.phase === 'PLACING_BASE') &&
+      game.input?.mouseGrid;
+    if (!show) {
+      this.elSynergyTooltip.classList.add('hidden');
+      return;
+    }
+    const { x, y } = game.input.mouseGrid;
+    const cell = game.grid.get(x, y);
+    if (!cell || typeof formatSynergyTooltip !== 'function') {
+      this.elSynergyTooltip.classList.add('hidden');
+      return;
+    }
+    const text = formatSynergyTooltip(cell);
+    if (!text) {
+      this.elSynergyTooltip.classList.add('hidden');
+      return;
+    }
+    this.elSynergyTooltip.textContent = text;
+    this.elSynergyTooltip.classList.remove('hidden');
   }
 
   renderDeckChips(game) {
@@ -224,14 +296,17 @@ class UI {
     const targetWave = Math.max(1, game.wave);
     const preview = (typeof previewWave === 'function') ? previewWave(targetWave) : null;
     if (!preview) return;
-    const sig = `w${targetWave}:${preview.walkers}-${preview.brutes}-${preview.flyers}-${preview.boss}`;
+    const sig = `w${targetWave}:${preview.walkers}-${preview.brutes}-${preview.flyers}-${preview.boss}-${preview.bossLabel || ''}`;
     if (this._lastWavePreviewSig === sig) return;
     this._lastWavePreviewSig = sig;
     const parts = [];
+    if (preview.isBossWave) {
+      parts.push(['boss', '✶', `BOSS ${preview.bossLabel || ''}`]);
+    }
     if (preview.walkers > 0) parts.push(['walker', '●', preview.walkers]);
     if (preview.brutes > 0)  parts.push(['brute',  '■', preview.brutes]);
     if (preview.flyers > 0)  parts.push(['flyer',  '✦', preview.flyers]);
-    if (preview.boss > 0)    parts.push(['boss',   '✶', preview.boss]);
+    if (preview.boss > 0 && !preview.isBossWave) parts.push(['boss', '✶', preview.boss]);
     this.elWavePreview.innerHTML = parts
       .map(([type, sym, n]) => `<span class="enemy-pill" data-type="${type}"><span class="swatch"></span>${sym} ${n}</span>`)
       .join('');
@@ -401,4 +476,40 @@ function formatStatsList(stats) {
   if (stats.passiveIncome) parts.push(`+${stats.passiveIncome}/wave`);
   if (stats.baseHpBonus)   parts.push(`+${stats.baseHpBonus} base HP`);
   return parts;
+}
+
+const SHAPE_SORT_ORDER = Object.fromEntries(SHAPE_KEYS.map((s, i) => [s, i]));
+const ROLE_SORT_ORDER = {
+  wall: 0, shooter: 1, gunner: 2, sniper: 3, splash: 4, slow: 5, piercer: 6, multishot: 7,
+};
+
+function sortDeckCards(cards, sortKey, asc) {
+  const copy = cards.slice();
+  copy.sort((a, b) => {
+    let cmp = 0;
+    switch (sortKey) {
+      case 'shape':
+        cmp = (SHAPE_SORT_ORDER[a.shape] ?? 99) - (SHAPE_SORT_ORDER[b.shape] ?? 99);
+        if (cmp === 0) cmp = a.shape.localeCompare(b.shape);
+        break;
+      case 'role':
+        cmp = (ROLE_SORT_ORDER[a.role] ?? 99) - (ROLE_SORT_ORDER[b.role] ?? 99);
+        if (cmp === 0) cmp = a.role.localeCompare(b.role);
+        break;
+      case 'rarity':
+        cmp = (RARITY_INDEX[a.rarity] ?? 0) - (RARITY_INDEX[b.rarity] ?? 0);
+        break;
+      case 'name':
+        cmp = a.name.localeCompare(b.name);
+        break;
+      case 'cost':
+        cmp = (a.cost ?? 0) - (b.cost ?? 0);
+        break;
+      default:
+        cmp = 0;
+    }
+    if (cmp === 0) cmp = a.id.localeCompare(b.id);
+    return asc ? cmp : -cmp;
+  });
+  return copy;
 }

@@ -22,7 +22,8 @@ function _findAdjacentWall(grid, x, y) {
 
 function applyHpDamage(game, x, y, cell, dmg) {
   if (!cell || cell.isBase || dmg <= 0) return;
-  let remaining = dmg;
+  const defMult = cell.synergyMult || 1;
+  let remaining = dmg / defMult;
   if (cell.role !== 'wall') {
     const wall = _findAdjacentWall(game.grid, x, y);
     if (wall) {
@@ -72,9 +73,10 @@ function applyProximityDamage(game, dt) {
 // it still works at 40% (the floor). Wraps damage / fireRate / slow strength.
 const EFFECTIVENESS_FLOOR = 0.4;
 function effectiveness(cell) {
-  if (!cell || !cell.maxHp) return 1;
+  if (!cell || !cell.maxHp) return cell?.synergyMult || 1;
   const ratio = Math.max(0, Math.min(1, cell.hp / cell.maxHp));
-  return EFFECTIVENESS_FLOOR + (1 - EFFECTIVENESS_FLOOR) * ratio;
+  const base = EFFECTIVENESS_FLOOR + (1 - EFFECTIVENESS_FLOOR) * ratio;
+  return base * (cell.synergyAttackMult || cell.synergyMult || 1);
 }
 
 function updateTowers(game, dt) {
