@@ -13,7 +13,7 @@ class UI {
     this.elWavePreview = document.getElementById('wave-preview');
     this.elPhase = document.getElementById('phase-indicator');
     this.elNextCanvas = document.getElementById('next-canvas');
-    this.nextCtx = this.elNextCanvas.getContext('2d');
+    this.nextCtx = this.elNextCanvas ? this.elNextCanvas.getContext('2d') : null;
     this.elHoldCanvas = document.getElementById('hold-canvas');
     this.holdCtx = this.elHoldCanvas ? this.elHoldCanvas.getContext('2d') : null;
     this.elDeckChips = document.getElementById('deck-chips');
@@ -33,12 +33,10 @@ class UI {
     this.shopPoints = document.getElementById('shop-points');
     this.shopList = document.getElementById('shop-list');
     this.shopDeckGrid = document.getElementById('shop-deck-grid');
-    this.shopDeckTitle = document.getElementById('shop-deck-title');
     this.shopDeckHint = document.getElementById('shop-deck-hint');
     this.shopClose = document.getElementById('shop-close');
     this.shopPause = document.getElementById('shop-pause');
     this.shopCancelBuy = document.getElementById('shop-cancel-buy');
-    this.shopBody = document.getElementById('shop-body');
     this.shopStepBrowse = document.getElementById('shop-step-browse');
     this.shopStepSwap = document.getElementById('shop-step-swap');
     this.shopStepIndicator = document.getElementById('shop-step-indicator');
@@ -49,11 +47,15 @@ class UI {
     this.shopBaseUpgrade = document.getElementById('shop-base-upgrade');
     this.shopBaseHpLabel = document.getElementById('shop-base-hp-label');
 
-    this.pendingBuyIndex = -1; // index into game.shopCards waiting for a deck swap
     this.shopDeckSort = { key: 'shape', asc: true };
+    this._lastShopScore = null;
 
-    this.shopClose.addEventListener('click', () => this.closeShop());
-    this.shopCancelBuy.addEventListener('click', () => this.cancelPendingBuy());
+    if (this.shopClose) {
+      this.shopClose.addEventListener('click', () => this.closeShop());
+    }
+    if (this.shopCancelBuy) {
+      this.shopCancelBuy.addEventListener('click', () => this.cancelPendingBuy());
+    }
     if (this.shopPause) {
       this.shopPause.addEventListener('click', () => this.game.togglePause());
     }
@@ -79,9 +81,16 @@ class UI {
       });
     }
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Escape' && this.game.helpOpen) {
+      if (e.code !== 'Escape') return;
+      if (this.game.helpOpen) {
         e.preventDefault();
         this.closeHelp();
+        return;
+      }
+      const shopOpen = this.shopModal && !this.shopModal.classList.contains('hidden');
+      if (this.game.phase === 'SHOP' && shopOpen && this.game.hasPendingShopBuy()) {
+        e.preventDefault();
+        this.cancelPendingBuy();
       }
     });
 
@@ -122,6 +131,7 @@ class UI {
   }
 
   showOverlay({ title, message, button = 'OK', onClick }) {
+    if (!this.overlay || !this.overlayTitle || !this.overlayMessage || !this.overlayButton) return;
     this.overlayTitle.textContent = title;
     this.overlayMessage.textContent = message;
     this.overlayButton.textContent = button;
@@ -163,10 +173,10 @@ class UI {
   }
 
   openShop(wave) {
-    this.shopWave.textContent = String(wave);
-    this.pendingBuyIndex = -1;
+    if (this.shopWave) this.shopWave.textContent = String(wave);
     this.game.clearPendingShopBuy();
-    this.shopModal.classList.remove('hidden');
+    this._lastShopScore = null;
+    if (this.shopModal) this.shopModal.classList.remove('hidden');
     this.renderShop();
   }
 
@@ -198,19 +208,23 @@ class UI {
     }
   }
   closeShop() {
-    this.shopModal.classList.add('hidden');
-    this.pendingBuyIndex = -1;
-    this.game.clearPendingShopBuy();
+    if (this.game.hasPendingShopBuy()) {
+      const leave = window.confirm(
+        'You selected a card to buy but have not picked one to remove.\n\nLeave the shop without swapping? (No points will be charged)'
+      );
+      if (!leave) return;
+      this.game.clearPendingShopBuy();
+    }
+    if (this.shopModal) this.shopModal.classList.add('hidden');
     this.game.closeShop();
   }
   cancelPendingBuy() {
-    this.pendingBuyIndex = -1;
     this.game.clearPendingShopBuy();
     this.renderShop();
   }
 
   onBaseUpgradeClick() {
-    if (this.pendingBuyIndex >= 0 || this.game.hasPendingShopBuy()) {
+    if (this.game.hasPendingShopBuy()) {
       this.game.setBanner('Finish or cancel your card swap first', 1.2);
       return;
     }
@@ -254,7 +268,6 @@ class UI {
     const sc = this.game.shopCards[idx];
     if (!sc || sc.bought) return;
     if (this.game.score < sc.cost) return;
-    this.pendingBuyIndex = idx;
     this.game.setPendingShopBuy(idx);
     this.renderShop();
     this.game.setBanner('Pick a deck card to remove (cost not charged yet)', 1.4);
@@ -265,21 +278,22 @@ class UI {
 
   // Click a deck card while a buy is pending. Confirm the swap.
   confirmSwap(deckCardId) {
-    if (this.pendingBuyIndex < 0) return;
-    const result = this.game.buyCard(this.pendingBuyIndex, deckCardId);
+    const pendingIdx = this.game.pendingShopBuyIndex;
+    if (pendingIdx < 0) return;
+    const result = this.game.buyCard(pendingIdx, deckCardId);
     if (!result.ok) {
       this.game.setBanner(result.reason || 'Swap failed', 1.0);
       return;
     }
-    this.pendingBuyIndex = -1;
     this.game.setBanner('Card swapped!', 1.0);
+    this._lastShopScore = null;
     this.renderShop();
   }
 
   renderShop() {
     const game = this.game;
-    this.shopPoints.textContent = String(game.score);
-    const isPending = this.pendingBuyIndex >= 0;
+    if (this.shopPoints) this.shopPoints.textContent = String(game.score);
+    const isPending = game.hasPendingShopBuy();
 
     if (this.shopStepIndicator) {
       this.shopStepIndicator.textContent = isPending
@@ -338,9 +352,10 @@ class UI {
   }
 
   renderShopSwap(game) {
+    const pendingIdx = game.pendingShopBuyIndex;
     if (this.shopPendingCard) {
       this.shopPendingCard.innerHTML = '';
-      const sc = game.shopCards[this.pendingBuyIndex];
+      const sc = game.shopCards[pendingIdx];
       if (sc) {
         const summary = document.createElement('div');
         summary.className = 'shop-pending-label muted';
@@ -409,10 +424,13 @@ class UI {
       window.TTD.mobileControls.syncVisibility();
     }
     // Re-render shop if open and points changed (so cost-based affordability stays fresh).
-    if (game.phase === 'SHOP' && !this.shopModal.classList.contains('hidden')) {
-      this.shopPoints.textContent = String(game.score);
-      if (this.pendingBuyIndex < 0) {
-        this.renderShop();
+    if (game.phase === 'SHOP' && this.shopModal && !this.shopModal.classList.contains('hidden')) {
+      if (this.shopPoints) this.shopPoints.textContent = String(game.score);
+      if (this._lastShopScore !== game.score) {
+        this._lastShopScore = game.score;
+        if (!game.hasPendingShopBuy()) {
+          this.renderShop();
+        }
       }
     }
   }
@@ -481,6 +499,7 @@ class UI {
   }
 
   drawNextPiece(game) {
+    if (!this.nextCtx || !this.elNextCanvas) return;
     const ctx = this.nextCtx;
     const w = this.elNextCanvas.width, h = this.elNextCanvas.height;
     ctx.fillStyle = CONFIG.COLORS.BG;
