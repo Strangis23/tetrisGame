@@ -1,4 +1,139 @@
 // Canvas renderer. All drawing happens in pixel coords; cell size = CONFIG.CELL_PX.
+
+function cellRoleColor(role, shape, isBase) {
+  if (isBase) {
+    const roleColor = (CONFIG.ROLE_COLORS && role && CONFIG.ROLE_COLORS[role]) || CONFIG.COLORS[shape];
+    return roleColor || CONFIG.COLORS.BASE;
+  }
+  return (CONFIG.ROLE_COLORS && role && CONFIG.ROLE_COLORS[role]) || CONFIG.COLORS[shape];
+}
+
+function drawRolePattern(ctx, role, px, py, cellPx) {
+  const inset = 2;
+  const w = cellPx - inset * 2;
+  const h = cellPx - inset * 2;
+  const cx = px + cellPx / 2;
+  const cy = py + cellPx / 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(px + inset, py + inset, w, h);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+  ctx.fillStyle = 'rgba(255,255,255,0.14)';
+  ctx.lineWidth = 1;
+
+  switch (role) {
+    case 'wall':
+      for (let i = -cellPx; i < cellPx * 2; i += 5) {
+        ctx.beginPath();
+        ctx.moveTo(px + i, py + inset);
+        ctx.lineTo(px + i + cellPx, py + cellPx - inset);
+        ctx.stroke();
+      }
+      break;
+    case 'shooter':
+      ctx.beginPath();
+      ctx.arc(cx, cy, cellPx * 0.22, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, cellPx * 0.08, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'sniper':
+      ctx.beginPath();
+      ctx.moveTo(cx - cellPx * 0.28, cy);
+      ctx.lineTo(cx + cellPx * 0.28, cy);
+      ctx.moveTo(cx, cy - cellPx * 0.28);
+      ctx.lineTo(cx, cy + cellPx * 0.28);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, cellPx * 0.12, 0, Math.PI * 2);
+      ctx.stroke();
+      break;
+    case 'splash':
+      for (let a = 0; a < 8; a++) {
+        const ang = (a / 8) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(ang) * cellPx * 0.32, cy + Math.sin(ang) * cellPx * 0.32);
+        ctx.stroke();
+      }
+      break;
+    case 'slow':
+      for (let r = 1; r <= 3; r++) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, cellPx * 0.1 * r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      break;
+    case 'gunner':
+      ctx.beginPath();
+      ctx.moveTo(cx - cellPx * 0.3, cy);
+      ctx.lineTo(cx + cellPx * 0.3, cy);
+      ctx.moveTo(cx, cy - cellPx * 0.3);
+      ctx.lineTo(cx, cy + cellPx * 0.3);
+      ctx.stroke();
+      break;
+    case 'piercer':
+      ctx.beginPath();
+      ctx.moveTo(cx - cellPx * 0.25, cy);
+      ctx.lineTo(cx + cellPx * 0.3, cy);
+      ctx.moveTo(cx + cellPx * 0.15, cy - cellPx * 0.12);
+      ctx.lineTo(cx + cellPx * 0.3, cy);
+      ctx.lineTo(cx + cellPx * 0.15, cy + cellPx * 0.12);
+      ctx.stroke();
+      break;
+    case 'multishot':
+      for (let a = 0; a < 5; a++) {
+        const ang = -Math.PI / 2 + (a - 2) * 0.35;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(ang) * cellPx * 0.3, cy + Math.sin(ang) * cellPx * 0.3);
+        ctx.stroke();
+      }
+      break;
+    default:
+      break;
+  }
+  ctx.restore();
+}
+
+function drawRoleMarker(ctx, role, px, py, cellPx, opts = {}) {
+  const { isBase = false } = opts;
+  if (role) drawRolePattern(ctx, role, px, py, cellPx);
+
+  const glyph = ROLE_GLYPHS && ROLE_GLYPHS[role];
+  if (glyph) {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.font = `bold ${Math.floor(cellPx * 0.5)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(glyph, px + cellPx / 2, py + cellPx / 2);
+  }
+
+  if (!isBase && role) {
+    const roleColor = (CONFIG.ROLE_COLORS && CONFIG.ROLE_COLORS[role]) || '#64748b';
+    ctx.fillStyle = roleColor;
+    ctx.beginPath();
+    ctx.moveTo(px + 1, py + 1);
+    ctx.lineTo(px + cellPx * 0.32, py + 1);
+    ctx.lineTo(px + 1, py + cellPx * 0.32);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  if (isBase) {
+    ctx.strokeStyle = CONFIG.COLORS.BASE;
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(px + 1.5, py + 1.5, cellPx - 3, cellPx - 3);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.font = `bold ${Math.floor(cellPx * 0.42)}px sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('★', px + cellPx - 3, py + 2);
+  }
+}
+
 class Renderer {
   constructor(ctx, canvas) {
     this.ctx = ctx;
@@ -67,12 +202,14 @@ class Renderer {
     const ctx = this.ctx;
     const px = x * this.cellPx;
     const py = y * this.cellPx;
-    const color = cell.isBase
-      ? CONFIG.COLORS.BASE
-      : (CONFIG.ROLE_COLORS && CONFIG.ROLE_COLORS[cell.role]) || CONFIG.COLORS[cell.shape];
+    const roleColor = cellRoleColor(cell.role, cell.shape, false);
     // Body
-    ctx.fillStyle = color;
+    ctx.fillStyle = roleColor;
     ctx.fillRect(px + 1, py + 1, this.cellPx - 2, this.cellPx - 2);
+    if (cell.isBase) {
+      ctx.fillStyle = 'rgba(253, 224, 71, 0.35)';
+      ctx.fillRect(px + 1, py + 1, this.cellPx - 2, this.cellPx - 2);
+    }
     // Inner shading
     const grad = ctx.createLinearGradient(px, py, px, py + this.cellPx);
     grad.addColorStop(0, 'rgba(255,255,255,0.18)');
@@ -109,15 +246,7 @@ class Renderer {
       }
     }
 
-    // Role glyph (skip for wall/shooter; they're the visual baseline).
-    const glyph = ROLE_GLYPHS && ROLE_GLYPHS[cell.role];
-    if (glyph && cell.role !== 'wall' && cell.role !== 'shooter') {
-      ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.font = `bold ${Math.floor(this.cellPx * 0.55)}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(glyph, px + this.cellPx / 2, py + this.cellPx / 2);
-    }
+    drawRoleMarker(ctx, cell.role, px, py, this.cellPx, { isBase: cell.isBase });
 
     // HP bar (only when damaged)
     if (cell.hp < cell.maxHp) {
@@ -127,21 +256,12 @@ class Renderer {
       ctx.fillStyle = ratio > 0.5 ? '#22c55e' : ratio > 0.25 ? '#facc15' : '#ef4444';
       ctx.fillRect(px + 2, py + this.cellPx - 6, (this.cellPx - 4) * ratio, 3);
     }
-    if (cell.isBase) {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.font = `${Math.floor(this.cellPx * 0.6)}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('★', px + this.cellPx / 2, py + this.cellPx / 2);
-    }
   }
 
   drawActivePiece(piece, isBase) {
     const cells = piece.cells();
     const role = piece.card && piece.card.role;
-    const color = isBase
-      ? CONFIG.COLORS.BASE
-      : (CONFIG.ROLE_COLORS && role && CONFIG.ROLE_COLORS[role]) || CONFIG.COLORS[piece.shape];
+    const color = cellRoleColor(role, piece.shape, false);
     const rarity = piece.card && piece.card.rarity;
     const rarityColor = rarity && CONFIG.RARITY_COLORS[rarity];
     const ctx = this.ctx;
@@ -151,15 +271,20 @@ class Renderer {
       const py = y * this.cellPx;
       ctx.fillStyle = color;
       ctx.fillRect(px + 1, py + 1, this.cellPx - 2, this.cellPx - 2);
+      if (isBase) {
+        ctx.fillStyle = 'rgba(253, 224, 71, 0.35)';
+        ctx.fillRect(px + 1, py + 1, this.cellPx - 2, this.cellPx - 2);
+      }
       if (rarityColor && rarity !== 'common') {
         ctx.strokeStyle = rarityColor;
         ctx.lineWidth = rarity === 'legendary' ? 2.5 : 2;
         ctx.strokeRect(px + 1.5, py + 1.5, this.cellPx - 3, this.cellPx - 3);
-      } else {
+      } else if (!isBase) {
         ctx.strokeStyle = 'rgba(255,255,255,0.5)';
         ctx.lineWidth = 1;
         ctx.strokeRect(px + 1.5, py + 1.5, this.cellPx - 3, this.cellPx - 3);
       }
+      drawRoleMarker(ctx, role, px, py, this.cellPx, { isBase });
     }
   }
 

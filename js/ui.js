@@ -38,6 +38,12 @@ class UI {
     this.shopClose = document.getElementById('shop-close');
     this.shopPause = document.getElementById('shop-pause');
     this.shopCancelBuy = document.getElementById('shop-cancel-buy');
+    this.shopBody = document.getElementById('shop-body');
+    this.shopStepBrowse = document.getElementById('shop-step-browse');
+    this.shopStepSwap = document.getElementById('shop-step-swap');
+    this.shopStepIndicator = document.getElementById('shop-step-indicator');
+    this.shopPendingCard = document.getElementById('shop-pending-card');
+    this.shopUpgrades = document.getElementById('shop-upgrades');
     this.deckSortBar = document.getElementById('deck-sort-bar');
     this.sortDirectionBtn = document.getElementById('sort-direction');
     this.shopBaseUpgrade = document.getElementById('shop-base-upgrade');
@@ -159,6 +165,7 @@ class UI {
   openShop(wave) {
     this.shopWave.textContent = String(wave);
     this.pendingBuyIndex = -1;
+    this.game.clearPendingShopBuy();
     this.shopModal.classList.remove('hidden');
     this.renderShop();
   }
@@ -193,14 +200,20 @@ class UI {
   closeShop() {
     this.shopModal.classList.add('hidden');
     this.pendingBuyIndex = -1;
+    this.game.clearPendingShopBuy();
     this.game.closeShop();
   }
   cancelPendingBuy() {
     this.pendingBuyIndex = -1;
+    this.game.clearPendingShopBuy();
     this.renderShop();
   }
 
   onBaseUpgradeClick() {
+    if (this.pendingBuyIndex >= 0 || this.game.hasPendingShopBuy()) {
+      this.game.setBanner('Finish or cancel your card swap first', 1.2);
+      return;
+    }
     const result = this.game.buyBaseUpgrade();
     if (!result.ok) {
       this.game.setBanner(result.reason || 'Cannot upgrade', 1.0);
@@ -242,7 +255,12 @@ class UI {
     if (!sc || sc.bought) return;
     if (this.game.score < sc.cost) return;
     this.pendingBuyIndex = idx;
+    this.game.setPendingShopBuy(idx);
     this.renderShop();
+    this.game.setBanner('Pick a deck card to remove (cost not charged yet)', 1.4);
+    if (this.shopStepSwap) {
+      this.shopStepSwap.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
   }
 
   // Click a deck card while a buy is pending. Confirm the swap.
@@ -250,62 +268,103 @@ class UI {
     if (this.pendingBuyIndex < 0) return;
     const result = this.game.buyCard(this.pendingBuyIndex, deckCardId);
     if (!result.ok) {
-      console.warn('buyCard failed:', result.reason);
+      this.game.setBanner(result.reason || 'Swap failed', 1.0);
       return;
     }
     this.pendingBuyIndex = -1;
+    this.game.setBanner('Card swapped!', 1.0);
     this.renderShop();
   }
 
   renderShop() {
     const game = this.game;
     this.shopPoints.textContent = String(game.score);
-    this.renderShopUpgrades(game);
+    const isPending = this.pendingBuyIndex >= 0;
 
-    // Top: shop offers.
+    if (this.shopStepIndicator) {
+      this.shopStepIndicator.textContent = isPending
+        ? 'Step 2 of 2 — Pick a card to remove'
+        : 'Step 1 of 2 — Choose a card to buy';
+    }
+    if (this.shopStepBrowse) {
+      this.shopStepBrowse.classList.toggle('hidden', isPending);
+    }
+    if (this.shopStepSwap) {
+      this.shopStepSwap.classList.toggle('hidden', !isPending);
+    }
+    if (this.shopCancelBuy) {
+      this.shopCancelBuy.classList.toggle('hidden', !isPending);
+    }
+
+    if (!isPending) {
+      this.renderShopUpgrades(game);
+      this.renderShopBrowse(game);
+      return;
+    }
+
+    this.renderShopSwap(game);
+  }
+
+  renderShopBrowse(game) {
+    if (!this.shopList) return;
     this.shopList.innerHTML = '';
     game.shopCards.forEach((sc, idx) => {
       const card = makeCardEl(sc, { showCost: true });
       const buyBtn = document.createElement('button');
+      buyBtn.type = 'button';
       const canAfford = game.score >= sc.cost;
-      const isPending = this.pendingBuyIndex === idx;
       if (sc.bought) {
         card.classList.add('bought');
         buyBtn.textContent = 'BOUGHT';
         buyBtn.disabled = true;
-      } else if (isPending) {
-        buyBtn.textContent = 'Pick deck card →';
-        buyBtn.disabled = true;
       } else {
         buyBtn.textContent = canAfford ? `Buy — ${sc.cost}` : `Need ${sc.cost - game.score} more`;
         buyBtn.disabled = !canAfford;
-        buyBtn.addEventListener('click', () => this.beginPendingBuy(idx));
+        if (canAfford) {
+          card.classList.add('shop-selectable');
+          card.addEventListener('click', (e) => {
+            if (e.target.closest('button')) return;
+            this.beginPendingBuy(idx);
+          });
+        }
+        buyBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.beginPendingBuy(idx);
+        });
       }
       card.querySelector('.footer').appendChild(buyBtn);
       this.shopList.appendChild(card);
     });
+  }
 
-    // Bottom: deck panel. If a buy is pending, deck cards become "removable".
+  renderShopSwap(game) {
+    if (this.shopPendingCard) {
+      this.shopPendingCard.innerHTML = '';
+      const sc = game.shopCards[this.pendingBuyIndex];
+      if (sc) {
+        const summary = document.createElement('div');
+        summary.className = 'shop-pending-label muted';
+        summary.textContent = 'You are buying:';
+        this.shopPendingCard.appendChild(summary);
+        const card = makeCardEl(sc, { showCost: true });
+        const footer = card.querySelector('.footer');
+        if (footer) footer.remove();
+        this.shopPendingCard.appendChild(card);
+      }
+    }
+
+    if (!this.shopDeckGrid) return;
     this.shopDeckGrid.innerHTML = '';
-    const isPending = this.pendingBuyIndex >= 0;
-    if (isPending) {
-      this.shopDeckTitle.textContent = 'Pick a card to REMOVE';
-      this.shopDeckHint.textContent = 'Tap any of your deck cards below to swap it for the shop card.';
-      this.shopCancelBuy.classList.remove('hidden');
-    } else {
-      this.shopDeckTitle.textContent = `Your Deck (${game.deck ? game.deck.size() : 0})`;
-      this.shopDeckHint.textContent = 'Tap "Buy" on a shop card above to start a swap.';
-      this.shopCancelBuy.classList.add('hidden');
+    if (this.shopDeckHint) {
+      this.shopDeckHint.textContent = 'Tap any deck card below to complete the swap.';
     }
     if (game.deck) {
       const sorted = sortDeckCards(game.deck.list(), this.shopDeckSort.key, this.shopDeckSort.asc);
       for (const dc of sorted) {
         const card = makeCardEl(dc, { showCost: false });
-        if (isPending) {
-          card.classList.add('removable');
-          card.title = 'Click to remove this card';
-          card.addEventListener('click', () => this.confirmSwap(dc.id));
-        }
+        card.classList.add('removable');
+        card.title = 'Tap to remove this card';
+        card.addEventListener('click', () => this.confirmSwap(dc.id));
         this.shopDeckGrid.appendChild(card);
       }
     }
@@ -352,6 +411,9 @@ class UI {
     // Re-render shop if open and points changed (so cost-based affordability stays fresh).
     if (game.phase === 'SHOP' && !this.shopModal.classList.contains('hidden')) {
       this.shopPoints.textContent = String(game.score);
+      if (this.pendingBuyIndex < 0) {
+        this.renderShop();
+      }
     }
   }
 
