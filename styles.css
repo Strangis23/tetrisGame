@@ -889,6 +889,30 @@ button:disabled {
   font-family: inherit;
 }
 
+.role-legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.role-legend li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.role-swatch {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-top: 2px;
+}
+
 .help-footer {
   flex-shrink: 0;
   padding-top: 8px;
@@ -990,12 +1014,52 @@ button:disabled {
 }
 
 .shop-body {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
-  overflow: hidden;
+  overflow-y: auto;
   min-height: 0;
+  gap: 12px;
+}
+
+.shop-step {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  gap: 12px;
+}
+
+#shop-step-swap .deck-grid {
+  min-height: 160px;
+}
+
+.shop-step-indicator {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.shop-browse-hint {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+}
+
+.shop-pending-card {
+  margin-bottom: 4px;
+}
+
+.shop-pending-card .card {
+  cursor: default;
+}
+
+.shop-pending-label {
+  margin: 0 0 6px 0;
+  font-size: 12px;
 }
 
 .shop-pane {
@@ -1137,6 +1201,14 @@ button:disabled {
   border-color: var(--danger);
 }
 .card.removable:hover { box-shadow: 0 0 12px rgba(239, 68, 68, 0.4); }
+
+.card.shop-selectable {
+  cursor: pointer;
+}
+
+.card.shop-selectable:hover:not(.disabled) {
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.35);
+}
 
 .shop-deck-header {
   display: flex;
@@ -1403,13 +1475,28 @@ button:disabled {
   }
 
   .shop-body {
+    gap: 10px;
+  }
+
+  #shop-step-browse .shop-grid,
+  #shop-list {
     grid-template-columns: 1fr;
   }
 
-  #shop-list,
-  .shop-grid,
-  .deck-grid {
-    grid-template-columns: 1fr;
+  #shop-step-swap .deck-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .card {
+    padding: 10px;
+  }
+
+  .card .name {
+    font-size: 12px;
+  }
+
+  .card .stats {
+    font-size: 10px;
   }
 
   .shop-header p.muted {
@@ -1444,6 +1531,10 @@ button:disabled {
 @media (max-width: 400px) {
   .deck-chips {
     grid-template-columns: repeat(4, 1fr);
+  }
+
+  #shop-step-swap .deck-grid {
+    grid-template-columns: 1fr;
   }
 }
 

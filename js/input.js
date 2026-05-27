@@ -45,7 +45,12 @@ class Input {
     const gy = Math.floor(sy / CONFIG.CELL_PX);
     if (!this.game.repairCell) return;
     const cell = this.game.grid && this.game.grid.get(gx, gy);
-    if (!cell || cell.hp >= cell.maxHp) return;
+    if (!cell) return;
+    if (cell.isBase) {
+      if (this.game.baseHp >= this.game.baseMaxHp) return;
+    } else if (cell.hp >= cell.maxHp) {
+      return;
+    }
     const result = this.game.repairCell(gx, gy);
     if (result && !result.ok && result.reason) {
       this.game.setBanner(result.reason, 0.7);

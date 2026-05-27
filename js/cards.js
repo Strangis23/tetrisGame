@@ -19,8 +19,8 @@ const RARITY_COSTS = {
 const ROLES_BY_RARITY = {
   common:    ['wall', 'shooter'],
   uncommon:  ['wall', 'shooter'],
-  rare:      ['shooter', 'sniper', 'splash', 'slow', 'gunner'],
-  epic:      ['sniper', 'splash', 'slow', 'gunner', 'piercer', 'multishot'],
+  rare:      ['wall', 'shooter', 'sniper', 'splash', 'slow', 'gunner'],
+  epic:      ['wall', 'sniper', 'splash', 'slow', 'gunner', 'piercer', 'multishot'],
   legendary: ['sniper', 'splash', 'slow', 'gunner', 'piercer', 'multishot', 'wall'],
 };
 
@@ -183,7 +183,7 @@ function generateShopCards(wave, n = CONFIG.SHOP_CARD_COUNT) {
 
 // Glyph used to render the role on a placed cell (1-2 chars, rendered centered).
 const ROLE_GLYPHS = {
-  wall:      '',
+  wall:      '▧',
   shooter:   '•',
   sniper:    '⊙',
   splash:    '✺',

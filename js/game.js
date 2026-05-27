@@ -28,6 +28,7 @@ class Game {
     this.waveSpawner = null;
     this.input = null;
     this.shopCards = []; // currently offered shop cards (each annotated with .bought boolean)
+    this.pendingShopBuyIndex = -1; // shop card awaiting deck swap (-1 = none)
     this.waveSpeed = 1;  // player-controlled wave time-scale (1x / 2x / 3x)
     this.waveStats = { kills: 0, points: 0, income: 0 };
     this.heldCard = null;          // Tetris-style hold slot
@@ -65,6 +66,21 @@ class Game {
     return true;
   }
 
+  // Compute repair cost for a placed cell. Returns { cost, missing, isBase }.
+  repairCost(cell) {
+    const perHp = CONFIG.REPAIR_COST_PER_HP || 10;
+    if (cell.isBase) {
+      const missing = Math.max(0, this.baseMaxHp - this.baseHp);
+      const mult = CONFIG.REPAIR_BASE_MULTIPLIER || 4;
+      const cost = Math.max(1, Math.ceil(missing * perHp * mult));
+      return { cost, missing, isBase: true };
+    }
+    const missing = Math.max(0, cell.maxHp - cell.hp);
+    const rarityMult = (CONFIG.REPAIR_RARITY_MULT && CONFIG.REPAIR_RARITY_MULT[cell.rarity]) || 1;
+    const cost = Math.max(1, Math.ceil(missing * perHp * rarityMult));
+    return { cost, missing, isBase: false };
+  }
+
   // Spend points to fully restore a damaged cell. Returns { ok, spent, reason }.
   repairCell(x, y) {
     if (this.phase !== 'BUILD' && this.phase !== 'PLACING_BASE') {
@@ -72,14 +88,19 @@ class Game {
     }
     const cell = this.grid.get(x, y);
     if (!cell) return { ok: false, reason: 'No block here' };
-    if (cell.hp >= cell.maxHp) return { ok: false, reason: 'Already at full HP' };
-    const missing = cell.maxHp - cell.hp;
-    const perHp = CONFIG.REPAIR_COST_PER_HP || 6;
-    const cost = Math.max(1, Math.ceil(missing * perHp));
+    const { cost, missing, isBase } = this.repairCost(cell);
+    if (missing <= 0) return { ok: false, reason: 'Already at full HP' };
     if (this.score < cost) return { ok: false, reason: `Need ${cost - this.score} more points` };
     this.score -= cost;
-    cell.hp = cell.maxHp;
-    this.setBanner(`Repaired (-${cost})`, 0.6);
+    if (isBase) {
+      this.baseHp = this.baseMaxHp;
+      this.grid.syncBaseHpDisplay(this.baseHp, this.baseMaxHp);
+      this.setBanner(`Base repaired (-${cost})`, 0.6);
+    } else {
+      cell.hp = cell.maxHp;
+      const name = (ROLE_NAMES[cell.role] && ROLE_NAMES[cell.role][cell.rarity]) || cell.role;
+      this.setBanner(`${name} repaired (-${cost})`, 0.6);
+    }
     return { ok: true, spent: cost };
   }
 
@@ -177,8 +198,21 @@ class Game {
     return this.baseMaxHp > 0 && this.baseHpLevel < max;
   }
 
+  setPendingShopBuy(index) {
+    this.pendingShopBuyIndex = index;
+  }
+
+  clearPendingShopBuy() {
+    this.pendingShopBuyIndex = -1;
+  }
+
+  hasPendingShopBuy() {
+    return this.pendingShopBuyIndex >= 0;
+  }
+
   buyBaseUpgrade() {
     if (this.phase !== 'SHOP') return { ok: false, reason: 'Shop closed' };
+    if (this.hasPendingShopBuy()) return { ok: false, reason: 'Finish or cancel card swap first' };
     if (!this.canBuyBaseUpgrade()) return { ok: false, reason: 'Max upgrades reached' };
     const cost = this.baseUpgradeCost();
     if (this.score < cost) return { ok: false, reason: 'Not enough points' };
@@ -423,6 +457,7 @@ class Game {
   openShop() {
     this.clearCombatVisuals();
     this.phase = 'SHOP';
+    this.clearPendingShopBuy();
     this.shopCards = generateShopCards(this.wave, CONFIG.SHOP_CARD_COUNT).map((c) => ({ ...c, bought: false }));
     window.dispatchEvent(new CustomEvent('ttd-shop-open', { detail: { wave: this.wave } }));
   }
@@ -430,6 +465,9 @@ class Game {
   // Buy a shop card and replace one deck card. Returns { ok, reason }.
   buyCard(shopIndex, removeDeckCardId) {
     if (this.phase !== 'SHOP') return { ok: false, reason: 'Shop closed' };
+    if (this.pendingShopBuyIndex >= 0 && this.pendingShopBuyIndex !== shopIndex) {
+      return { ok: false, reason: 'Another card purchase is pending' };
+    }
     const sc = this.shopCards[shopIndex];
     if (!sc) return { ok: false, reason: 'Bad shop index' };
     if (sc.bought) return { ok: false, reason: 'Already bought' };
@@ -439,6 +477,7 @@ class Game {
     if (!this.deck.replace(removeDeckCardId, newCard)) return { ok: false, reason: 'Replace failed' };
     this.score -= sc.cost;
     sc.bought = true;
+    this.clearPendingShopBuy();
     return { ok: true };
   }
 
@@ -462,6 +501,7 @@ class Game {
 
   closeShop() {
     if (this.phase !== 'SHOP') return;
+    this.clearPendingShopBuy();
     this.advanceToNextBuild();
   }
 

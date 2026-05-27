@@ -26,6 +26,14 @@ const CONFIG = {
 
   // Click-to-repair during BUILD / PLACING_BASE: cost in points per missing HP.
   REPAIR_COST_PER_HP: 10,
+  REPAIR_BASE_MULTIPLIER: 4,
+  REPAIR_RARITY_MULT: {
+    common: 1,
+    uncommon: 1.3,
+    rare: 1.6,
+    epic: 2.2,
+    legendary: 3.0,
+  },
 
   // Per-shape colours (now used purely for visuals, not behaviour).
   COLORS: {
