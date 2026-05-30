@@ -4,9 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Tetris Tower Defense</title>
-<link rel="stylesheet" href="styles.css?v=16" />
+<link rel="stylesheet" href="styles.css?v=18" />
 </head>
 <body>
+<div id="app-shell">
 <div id="game-root">
   <div id="canvas-wrap">
     <canvas id="game-canvas"></canvas>
@@ -101,6 +102,12 @@
       </label>
     </details>
   </aside>
+</div>
+
+<footer id="ad-banner" aria-label="Advertisement">
+  <div id="ad-slot" class="ad-slot"></div>
+  <p class="ad-legal muted"><a href="privacy.html">Privacy</a></p>
+</footer>
 </div>
 
 <div id="help-modal" class="hidden" role="dialog" aria-labelledby="help-title" aria-modal="true">
@@ -274,5 +281,6 @@
 <script src="js/render.js?v=16"></script>
 <script src="js/game.js?v=16"></script>
 <script src="js/main.js?v=16"></script>
+<script src="js/ads.js?v=18"></script>
 </body>
 </html>

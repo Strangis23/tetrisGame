@@ -4,9 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>High Score — Tetris Tower Defense</title>
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=18" />
 </head>
 <body class="highscores-page-body">
+<div id="app-shell" class="app-shell-highscores">
 <main class="highscores-page">
   <header class="highscores-page-header">
     <h1>High Score</h1>
@@ -61,7 +62,14 @@
   </footer>
 </main>
 
+<footer id="ad-banner" aria-label="Advertisement">
+  <div id="ad-slot" class="ad-slot"></div>
+  <p class="ad-legal muted"><a href="privacy.html">Privacy</a></p>
+</footer>
+</div>
+
 <script src="js/highscores.js?v=14"></script>
 <script src="js/highscores-page.js?v=14"></script>
+<script src="js/ads.js?v=18"></script>
 </body>
 </html>
