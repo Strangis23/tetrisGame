@@ -2,9 +2,8 @@
 (function () {
   const ADS = {
     enabled: true,
-    // Set these after AdSense approves your site:
-    clientId: '', // e.g. ca-pub-XXXXXXXXXXXXXXXX
-    bannerSlot: '', // display ad unit slot ID
+    clientId: 'ca-pub-6914309383865227',
+    bannerSlot: '', // add display ad unit slot ID after creating a banner unit in AdSense
   };
 
   const slot = document.getElementById('ad-slot');
@@ -24,17 +23,6 @@
     if (!ADS.enabled || !ADS.clientId || !ADS.bannerSlot) {
       if (isLocalDev()) showDevPlaceholder();
       return;
-    }
-
-    if (!document.querySelector('script[data-adsense-loader]')) {
-      const loader = document.createElement('script');
-      loader.async = true;
-      loader.src =
-        'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' +
-        encodeURIComponent(ADS.clientId);
-      loader.crossOrigin = 'anonymous';
-      loader.setAttribute('data-adsense-loader', '1');
-      document.head.appendChild(loader);
     }
 
     const ins = document.createElement('ins');
