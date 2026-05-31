@@ -6,7 +6,7 @@
 <title>Stackwave Defense</title>
 <link rel="stylesheet" href="assets/fonts/fonts.css" />
 <link rel="manifest" href="manifest.json" />
-<link rel="stylesheet" href="styles.css?v=33" />
+<link rel="stylesheet" href="styles.css?v=39" />
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6914309383865227"
      crossorigin="anonymous" data-swd-ads></script>
 </head>
@@ -70,6 +70,10 @@
         <input type="checkbox" id="run-daily-seed" />
         Daily seed run (<span id="daily-seed-label">today</span>)
       </label>
+      <label class="run-daily-label title-mobile-controls">
+        <input type="checkbox" id="mobile-controls-toggle" />
+        Touch controls (on-screen pad)
+      </label>
     </section>
 
     <div class="title-actions">
@@ -84,6 +88,48 @@
 </div>
 
 <div id="game-root">
+  <aside id="hud-left" class="hud-panel space-panel">
+    <div class="hud-top">
+      <h1>SWD</h1>
+      <div class="hud-top-actions">
+        <button type="button" id="music-mute-btn" class="hud-icon-btn" data-action="music-mute" aria-label="Mute music" title="Mute music" aria-pressed="false"><span class="music-mute-on">♪</span><span class="music-mute-off hidden">🔇</span></button>
+        <button type="button" id="settings-btn" class="hud-icon-btn" aria-label="Settings" title="Settings">⚙</button>
+        <a href="highscores.html" id="highscores-btn" class="hud-icon-btn" aria-label="View high score" title="High score">★</a>
+        <button type="button" id="help-btn" class="help-btn" aria-label="Help" aria-expanded="false" title="How to play">?</button>
+      </div>
+    </div>
+    <div id="phase-indicator">Place Home Base</div>
+
+    <div class="hud-section hud-stats-section">
+      <div class="hud-stats-grid">
+        <div class="hud-stat"><span>Points</span><span id="score">0</span></div>
+        <div class="hud-stat"><span>Total Earned</span><span id="total-earned">0</span></div>
+        <div class="hud-stat"><span>Base HP</span><span id="base-hp">--</span></div>
+        <div class="hud-stat"><span>Wave</span><span id="wave">0 / 100</span></div>
+        <div class="hud-stat"><span>Speed Tier</span><span id="speed-tier">1</span></div>
+        <div class="hud-stat"><span>Pieces Left</span><span id="pieces-left">--</span></div>
+        <div class="hud-stat"><span>Enemies Left</span><span id="enemies-left">--</span></div>
+        <div class="hud-stat"><span>Wave Speed (F)</span><span id="wave-speed">3x</span></div>
+      </div>
+    </div>
+
+    <div class="hud-section piece-previews piece-previews-stack">
+      <div class="preview-block">
+        <h3>Next</h3>
+        <canvas id="next-canvas" width="72" height="72"></canvas>
+      </div>
+      <div class="preview-block">
+        <h3>Hold (C)</h3>
+        <canvas id="hold-canvas" width="72" height="72"></canvas>
+      </div>
+    </div>
+
+    <details class="hud-collapsible hud-section" id="wave-preview-section">
+      <summary>Next Wave</summary>
+      <div id="wave-preview" class="wave-preview muted">--</div>
+    </details>
+  </aside>
+
   <div id="canvas-wrap">
     <canvas id="game-canvas"></canvas>
     <div id="mobile-controls" class="mobile-controls hidden mode-build" aria-label="Touch controls">
@@ -102,7 +148,7 @@
       </div>
       <div class="mobile-group mobile-group-wave">
         <button type="button" class="mob-btn mob-pause" data-action="pause" aria-label="Pause">⏸ Pause</button>
-        <button type="button" class="mob-btn mob-speed" data-action="waveSpeed" aria-label="Wave speed">1x</button>
+        <button type="button" class="mob-btn mob-speed" data-action="waveSpeed" aria-label="Wave speed">3x</button>
       </div>
     </div>
     <div id="overlay" class="hidden">
@@ -114,54 +160,13 @@
     </div>
   </div>
 
-  <aside id="hud" class="space-panel">
-    <div class="hud-top">
-      <h1>SWD</h1>
-      <div class="hud-top-actions">
-        <button type="button" id="music-mute-btn" class="hud-icon-btn" data-action="music-mute" aria-label="Mute music" title="Mute music" aria-pressed="false"><span class="music-mute-on">♪</span><span class="music-mute-off hidden">🔇</span></button>
-        <button type="button" id="settings-btn" class="hud-icon-btn" aria-label="Settings" title="Settings">⚙</button>
-        <button type="button" id="mobile-controls-hud-btn" class="hud-icon-btn mobile-hud-toggle" aria-label="Toggle touch controls" aria-pressed="false" title="Touch controls">Pad</button>
-        <a href="highscores.html" id="highscores-btn" class="hud-icon-btn" aria-label="View high score" title="High score">★</a>
-        <button type="button" id="help-btn" class="help-btn" aria-label="Help" aria-expanded="false" title="How to play">?</button>
-      </div>
-    </div>
-    <div id="phase-indicator">Place Home Base</div>
-
-    <div class="hud-section hud-stats-section">
-      <div class="hud-stats-grid">
-        <div class="hud-stat"><span>Points</span><span id="score">0</span></div>
-        <div class="hud-stat"><span>Total Earned</span><span id="total-earned">0</span></div>
-        <div class="hud-stat"><span>Base HP</span><span id="base-hp">--</span></div>
-        <div class="hud-stat"><span>Wave</span><span id="wave">0 / 100</span></div>
-        <div class="hud-stat"><span>Speed Tier</span><span id="speed-tier">1</span></div>
-        <div class="hud-stat"><span>Pieces Left</span><span id="pieces-left">--</span></div>
-        <div class="hud-stat"><span>Enemies Left</span><span id="enemies-left">--</span></div>
-        <div class="hud-stat"><span>Wave Speed (F)</span><span id="wave-speed">1x</span></div>
-      </div>
-    </div>
-
-    <div class="hud-section piece-previews">
-      <div class="preview-block">
-        <h3>Next</h3>
-        <canvas id="next-canvas" width="72" height="72"></canvas>
-      </div>
-      <div class="preview-block">
-        <h3>Hold (C)</h3>
-        <canvas id="hold-canvas" width="72" height="72"></canvas>
-      </div>
-    </div>
-
-    <details class="hud-collapsible hud-section" id="wave-preview-section">
-      <summary>Next Wave</summary>
-      <div id="wave-preview" class="wave-preview muted">--</div>
-    </details>
-
-    <details class="hud-collapsible hud-section deck-panel">
+  <aside id="hud-right" class="hud-panel space-panel">
+    <details class="hud-collapsible hud-section deck-panel" open>
       <summary>Deck <span class="muted" id="deck-count"></span></summary>
       <div id="deck-chips" class="deck-chips"></div>
     </details>
 
-    <details class="hud-collapsible hud-section controls">
+    <details class="hud-collapsible hud-section controls" open>
       <summary>Controls</summary>
       <div class="controls-keyboard">
         <div><kbd>&larr;</kbd> <kbd>&rarr;</kbd> Move</div>
@@ -173,11 +178,7 @@
         <div><kbd>P</kbd> Pause</div>
       </div>
       <div class="muted">Click damaged block to repair (10 pts/HP × rarity; base heals at 4×).</div>
-      <div class="controls-touch-hint muted">Swipe the board to move/drop; tap empty space to rotate. On-screen Pad below the board (toggle via Pad in the header).</div>
-      <label class="mobile-toggle">
-        <input type="checkbox" id="mobile-controls-toggle" />
-        Mobile controls
-      </label>
+      <div class="controls-touch-hint muted">Swipe the board to move/drop; tap empty space to rotate. Enable touch controls from the title menu before starting a run.</div>
     </details>
   </aside>
 </div>
@@ -199,6 +200,14 @@
       <label class="settings-check"><input type="checkbox" id="settings-reduce-motion" /> Reduce motion</label>
       <label class="settings-check"><input type="checkbox" id="settings-path-preview" /> Show enemy path preview during build</label>
       <label class="settings-check"><input type="checkbox" id="settings-colorblind" /> High-contrast role patterns</label>
+      <div class="settings-display-section hidden" id="settings-display-section">
+        <p class="settings-section-label">Display</p>
+        <div class="settings-display-actions">
+          <button type="button" id="settings-fullscreen-btn">Fullscreen</button>
+          <button type="button" id="settings-maximize-btn">Maximize</button>
+        </div>
+        <p class="muted settings-display-hint">F11 toggles fullscreen. Drag edges or use the title bar to resize.</p>
+      </div>
     </form>
     <div class="settings-footer">
       <button type="button" id="settings-quit" class="settings-quit hidden">Quit Game</button>
@@ -214,7 +223,7 @@
       <section>
         <h3>Goal</h3>
         <p>Clear <strong>100 waves</strong> by building defenses with polyomino modules. Protect your <strong>home base</strong> — the first piece you place.</p>
-        <p class="muted">You lose if base HP hits zero, the base is line-cleared, or blocks reach the spawn zone (top). Enemies on your base deal siege damage over time.</p>
+        <p class="muted">You lose if base HP hits zero or blocks reach the spawn zone (top). Only a completely full row clears, and your home base cells are not destroyed (they fall with the stack). Enemies on your base deal siege damage over time.</p>
       </section>
       <section>
         <h3>Phases</h3>
@@ -307,59 +316,59 @@
 
 <div id="shop-modal" class="hidden">
   <div class="modal-content shop-modal-content space-panel">
-    <div class="shop-header">
-      <h2>Card Shop</h2>
-      <p class="muted">Wave <span id="shop-wave">5</span> cleared. Buy any card to permanently add it to your deck — but you must remove one of your existing cards in exchange. Higher-wave shops offer rarer cards.</p>
-      <div class="hud-stat"><span>Points</span><span id="shop-points">0</span></div>
+    <header class="shop-topbar">
+      <div class="shop-topbar-main">
+        <h2>Card Shop</h2>
+        <span class="shop-wave-tag">Wave <span id="shop-wave">5</span></span>
+        <span class="shop-step-label" id="shop-step-label">Pick a card to buy</span>
+      </div>
+      <div class="shop-points-inline">
+        <span>Points</span>
+        <strong id="shop-points">0</strong>
+      </div>
+    </header>
+
+    <div class="shop-fortify-bar" id="shop-upgrades">
+      <div class="shop-fortify-info">
+        <strong>Fortify Base</strong>
+        <span class="muted" id="shop-base-hp-label">Base HP: --</span>
+      </div>
+      <button type="button" id="shop-base-upgrade">Fortify (+30 HP)</button>
     </div>
-    <p id="shop-step-indicator" class="shop-step-indicator">Step 1 of 2 — Choose a card to buy</p>
+
     <div class="shop-body" id="shop-body">
       <div id="shop-step-browse" class="shop-step">
-        <div class="shop-upgrades" id="shop-upgrades">
-          <h3>Upgrades</h3>
-          <div class="shop-upgrade-row">
-            <div class="shop-upgrade-info">
-              <strong>Fortify Base</strong>
-              <span class="muted" id="shop-base-hp-label">Base HP: --</span>
-            </div>
-            <button type="button" id="shop-base-upgrade">Fortify (+30 HP)</button>
-          </div>
-        </div>
-        <div class="shop-pane">
-          <h3>Available Cards</h3>
-          <p class="muted shop-browse-hint">Tap <strong>Buy</strong> on a card to continue to the deck swap step.</p>
-          <div id="shop-list" class="shop-grid"></div>
-        </div>
+        <p class="shop-hint muted">Buy a card, then remove one from your deck.</p>
+        <div id="shop-list" class="shop-offer-grid"></div>
       </div>
+
       <div id="shop-step-swap" class="shop-step hidden">
-        <div id="shop-pending-card" class="shop-pending-card"></div>
-        <div class="shop-pane shop-deck-pane">
-          <div class="shop-deck-header">
-            <h3 id="shop-deck-title">Pick a card to REMOVE</h3>
-            <div class="deck-sort-bar" id="deck-sort-bar">
-              <span class="sort-label">Sort:</span>
-              <button type="button" class="sort-btn active" data-sort="shape">Shape</button>
-              <button type="button" class="sort-btn" data-sort="role">Role</button>
-              <button type="button" class="sort-btn" data-sort="rarity">Rarity</button>
-              <button type="button" class="sort-btn" data-sort="name">Name</button>
-              <button type="button" class="sort-btn" data-sort="cost">Cost</button>
-              <button type="button" class="sort-btn sort-toggle" id="sort-direction" title="Toggle ascending/descending">↑</button>
-            </div>
+        <div id="shop-pending-card" class="shop-pending-wrap"></div>
+        <div class="shop-deck-toolbar">
+          <h3 id="shop-deck-title">Remove from deck</h3>
+          <div class="deck-sort-bar" id="deck-sort-bar">
+            <span class="sort-label">Sort</span>
+            <button type="button" class="sort-btn active" data-sort="shape">Shape</button>
+            <button type="button" class="sort-btn" data-sort="role">Role</button>
+            <button type="button" class="sort-btn" data-sort="rarity">Rarity</button>
+            <button type="button" class="sort-btn" data-sort="name">Name</button>
+            <button type="button" class="sort-btn sort-toggle" id="sort-direction" title="Toggle ascending/descending">↑</button>
           </div>
-          <p class="muted" id="shop-deck-hint">Tap any deck card below to complete the swap.</p>
-          <div id="shop-deck-grid" class="shop-grid deck-grid"></div>
         </div>
+        <p class="muted shop-deck-hint" id="shop-deck-hint">Tap a card below to complete the swap.</p>
+        <div id="shop-deck-grid" class="shop-deck-grid"></div>
       </div>
     </div>
-    <div class="shop-footer">
+
+    <footer class="shop-footer">
       <button type="button" id="shop-pause">Pause</button>
       <button type="button" id="shop-cancel-buy" class="hidden">Back</button>
-      <button type="button" id="shop-close">Continue to next wave</button>
-    </div>
+      <button type="button" id="shop-close" class="shop-continue-btn">Next wave</button>
+    </footer>
   </div>
 </div>
 
-<script src="js/platform.js?v=31"></script>
+<script src="js/platform.js?v=39"></script>
 <script src="js/config.js?v=31"></script>
 <script src="js/settings.js?v=31"></script>
 <script src="js/seed.js?v=31"></script>
@@ -379,14 +388,14 @@
 <script src="js/enemies.js?v=31"></script>
 <script src="js/towers.js?v=31"></script>
 <script src="js/waves.js?v=31"></script>
-<script src="js/ui.js?v=31"></script>
+<script src="js/ui.js?v=39"></script>
 <script src="js/input.js?v=31"></script>
-<script src="js/mobile-controls.js?v=31"></script>
+<script src="js/mobile-controls.js?v=37"></script>
 <script src="js/sprites.js?v=31"></script>
 <script src="js/render.js?v=31"></script>
 <script src="js/game.js?v=31"></script>
 <script src="js/starfield.js?v=31"></script>
-<script src="js/main.js?v=33"></script>
+<script src="js/main.js?v=40"></script>
 <script src="js/ads.js?v=31"></script>
 <script>
   (function () {

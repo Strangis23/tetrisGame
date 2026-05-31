@@ -70,7 +70,7 @@ html, body {
 /* Shared typography — body font for readable UI, display font for major titles only */
 .ui-label,
 .title-section-heading,
-#hud h3,
+.hud-panel h3,
 .hud-collapsible > summary,
 .shop-upgrades h3,
 .shop-pane h3,
@@ -375,25 +375,6 @@ strong {
   accent-color: var(--accent);
 }
 
-.mobile-hud-toggle {
-  display: none;
-  font-size: 11px;
-  letter-spacing: 0.5px;
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.mobile-hud-toggle.active {
-  background: rgba(34, 211, 238, 0.2);
-  box-shadow: 0 0 12px rgba(34, 211, 238, 0.25);
-}
-
-@media (hover: none) and (pointer: coarse) {
-  .mobile-hud-toggle {
-    display: inline-flex;
-  }
-}
-
 @media (orientation: landscape) and (max-height: 500px) {
   .mobile-pad {
     grid-template-columns: repeat(3, 44px);
@@ -419,17 +400,39 @@ strong {
   max-height: 100%;
 }
 
-#hud {
-  width: 280px;
-  flex: 0 0 auto;
+.hud-panel {
+  width: 250px;
+  flex: 0 0 250px;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 14px;
   overflow-x: hidden;
   overflow-y: auto;
-  max-height: 100%;
-  align-self: stretch;
+  box-sizing: border-box;
+  align-self: center;
+}
+
+#hud-left {
+  order: 1;
+}
+
+#canvas-wrap {
+  order: 2;
+}
+
+#hud-right {
+  order: 3;
+  justify-content: flex-start;
+}
+
+#hud-right .deck-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#hud-right .controls {
+  flex: 0 0 auto;
 }
 
 .hud-top {
@@ -481,7 +484,7 @@ strong {
   text-align: center;
 }
 
-#hud h1 {
+.hud-panel h1 {
   font-family: var(--font-display);
   font-size: 20px;
   margin: 0;
@@ -593,7 +596,7 @@ strong {
   }
 }
 
-#hud h3 {
+.hud-panel h3 {
   margin: 0 0 8px 0;
 }
 
@@ -668,6 +671,11 @@ strong {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+.piece-previews-stack {
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
 .preview-block {
@@ -892,6 +900,10 @@ body.title-visible #game-root {
 
 .title-daily {
   margin-top: 12px;
+}
+
+.title-mobile-controls {
+  margin-top: 10px;
 }
 
 .title-actions {
@@ -1513,68 +1525,112 @@ button:disabled {
   color: var(--gold);
 }
 
-#shop-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
-  margin: 16px 0;
-}
-
 .shop-modal-content {
-  max-width: 1100px;
-  width: 95%;
+  max-width: 680px;
+  width: min(680px, 94vw);
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  max-height: min(720px, 90vh);
+  padding: 14px 16px;
+  overflow: hidden;
 }
 
-.shop-header {
-  flex: 0 0 auto;
+.shop-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--line);
-  padding-bottom: 12px;
-  margin-bottom: 12px;
 }
 
-.shop-upgrades {
-  flex: 0 0 auto;
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 12px;
-  margin-bottom: 12px;
+.shop-topbar-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
-.shop-upgrades h3 {
-  margin: 0 0 8px 0;
+.shop-topbar-main h2 {
+  margin: 0;
+  font-size: 15px;
 }
 
-.shop-pane h3 {
-  margin: 0 0 8px 0;
+.shop-wave-tag {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
-.shop-upgrade-row {
+.shop-step-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.shop-step-label[data-step="swap"] {
+  color: var(--accent);
+  background: rgba(34, 211, 238, 0.1);
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+.shop-points-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--label);
+}
+
+.shop-points-inline strong {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.shop-fortify-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
+  margin: 10px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
   background: rgba(11, 16, 32, 0.6);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  flex-shrink: 0;
 }
 
-.shop-upgrade-info {
+.shop-fortify-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.shop-fortify-info strong {
   font-size: 13px;
 }
 
 #shop-base-upgrade {
-  flex-shrink: 0;
-  min-height: 44px;
+  min-height: 36px;
+  padding: 0 14px;
   background: var(--gold);
   color: var(--bg-0);
   font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 #shop-base-upgrade:disabled {
@@ -1588,65 +1644,94 @@ button:disabled {
   flex: 1 1 auto;
   overflow-y: auto;
   min-height: 0;
-  gap: 12px;
+  gap: 8px;
+  padding-right: 2px;
 }
 
 .shop-step {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  gap: 12px;
+  gap: 8px;
 }
 
-#shop-step-swap .deck-grid {
-  min-height: 160px;
-}
-
-.shop-step-indicator {
-  margin: 0 0 10px 0;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gold);
-  letter-spacing: 0.5px;
-  flex-shrink: 0;
-}
-
-.shop-browse-hint {
-  margin: 0 0 8px 0;
+.shop-hint {
+  margin: 0;
   font-size: 12px;
+  line-height: 1.4;
 }
 
-.shop-pending-card {
-  margin-bottom: 4px;
+.shop-offer-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
 }
 
-.shop-pending-card .card {
-  cursor: default;
+.shop-deck-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.shop-pending-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
 }
 
 .shop-pending-label {
-  margin: 0 0 6px 0;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.shop-pending-tile {
+  width: min(100%, 140px);
+  cursor: default;
+  border-color: var(--accent);
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.2);
+}
+
+.shop-deck-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.shop-deck-toolbar h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.shop-deck-hint {
+  margin: 0;
   font-size: 12px;
 }
 
-.shop-pane {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+.shop-deck-chip {
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-.shop-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
-  overflow-y: auto;
-  padding-right: 4px;
+.shop-deck-chip:hover,
+.shop-deck-chip:focus-visible {
+  outline: 2px solid var(--danger);
+  outline-offset: 1px;
+  z-index: 2;
 }
 
-.deck-grid {
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+.shop-deck-chip:active {
+  transform: scale(0.94);
 }
 
 .card {
@@ -1772,11 +1857,74 @@ button:disabled {
   box-shadow: 0 0 12px rgba(34, 211, 238, 0.35);
 }
 
-.shop-deck-header {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 4px;
+.card-tile {
+  padding: 8px 8px 6px;
+  gap: 3px;
+  min-height: 0;
+  border-width: 2px;
+}
+
+.card-tile .rarity-tag {
+  top: 4px;
+  right: 4px;
+  font-size: 7px;
+  letter-spacing: 0.5px;
+  padding: 1px 4px;
+}
+
+.card-tile .name {
+  font-size: 11px;
+  line-height: 1.25;
+  padding-right: 36px;
+  margin-top: 0;
+}
+
+.card-tile .shape-badge {
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.card-tile .role-line {
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.card-tile .stats {
+  gap: 2px;
+  margin-top: 0;
+  min-height: 2.2em;
+  align-content: flex-start;
+}
+
+.card-tile .stat-pill {
+  font-size: 9px;
+  padding: 1px 4px;
+}
+
+.card-tile .footer {
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.card-tile .footer button {
+  width: 100%;
+  min-height: 30px;
+  padding: 5px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.card-tile.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card-tile.bought {
+  opacity: 0.45;
 }
 
 .deck-sort-bar {
@@ -1828,17 +1976,16 @@ button:disabled {
 
 .shop-footer {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
   margin-top: 12px;
   border-top: 1px solid var(--line);
   padding-top: 12px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
   flex: 0 0 auto;
 }
 
 .shop-footer button {
-  flex: 1;
   min-height: 44px;
 }
 
@@ -1846,11 +1993,25 @@ button:disabled {
   background: var(--bg-2);
   color: var(--text);
   border: 1px solid var(--line);
-  flex: 0 1 auto;
   min-width: 88px;
+  padding: 0 16px;
 }
 
-#shop-cancel-buy { background: var(--danger); color: var(--text); }
+#shop-cancel-buy {
+  background: var(--danger);
+  color: var(--text);
+  min-width: 88px;
+  padding: 0 16px;
+}
+
+.shop-continue-btn {
+  margin-left: auto;
+  min-width: 140px;
+  padding: 0 20px;
+  background: linear-gradient(180deg, #3de8ff 0%, var(--accent) 50%, #0891b2 100%);
+  color: var(--space-deep);
+  font-weight: 700;
+}
 
 /* Persistent HUD deck panel chips */
 .deck-chips {
@@ -1952,10 +2113,14 @@ button:disabled {
 
 @media (max-width: 1100px), (hover: none) and (pointer: coarse) {
   #game-root { flex-direction: column; align-items: center; padding: 8px; }
-  #hud { width: 100%; max-width: 480px; }
+  .hud-panel { width: 100%; max-width: 480px; flex: 0 0 auto; }
   #canvas-wrap {
+    order: -1;
     max-width: 100%;
+    flex-shrink: 0;
   }
+  #hud-left { order: 0; }
+  #hud-right { order: 1; }
   #canvas-wrap.mobile-active {
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   }
@@ -1964,10 +2129,18 @@ button:disabled {
 @media (max-width: 900px) {
   #game-root { flex-direction: column; align-items: center; }
   #canvas-wrap { max-width: 100%; }
-  #hud {
+  .hud-panel {
+    max-height: none;
+    overflow-y: visible;
+    max-width: 100%;
+  }
+  #hud-left {
     max-height: 38vh;
     overflow-y: auto;
-    max-width: 100%;
+  }
+  #hud-right {
+    max-height: 42vh;
+    overflow-y: auto;
   }
   .hud-stats-grid {
     display: grid;
@@ -2002,9 +2175,13 @@ button:disabled {
     gap: 10px;
   }
 
-  #hud {
+  .hud-panel {
     max-width: 100%;
-    max-height: 40vh;
+  }
+
+  #hud-left,
+  #hud-right {
+    max-height: none;
   }
 
   .piece-previews {
@@ -2050,34 +2227,26 @@ button:disabled {
     padding: 16px;
   }
 
-  .shop-body {
-    gap: 10px;
+  .shop-offer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  #shop-step-browse .shop-grid,
-  #shop-list {
-    grid-template-columns: 1fr;
+  .shop-deck-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  #shop-step-swap .deck-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .shop-fortify-bar {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .card {
-    padding: 10px;
+  #shop-base-upgrade {
+    width: 100%;
   }
 
-  .card .name {
-    font-size: 12px;
-  }
-
-  .card .stats {
-    font-size: 10px;
-  }
-
-  .shop-header p.muted {
-    font-size: 12px;
-    line-height: 1.45;
+  .card-tile .footer button {
+    min-height: 40px;
+    font-size: 11px;
   }
 
   .shop-footer {
@@ -2107,10 +2276,6 @@ button:disabled {
 @media (max-width: 400px) {
   .deck-chips {
     grid-template-columns: repeat(4, 1fr);
-  }
-
-  #shop-step-swap .deck-grid {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -2180,6 +2345,47 @@ button:disabled {
   flex-direction: row !important;
   align-items: center;
   gap: 10px !important;
+}
+
+.settings-display-section {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.settings-section-label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--label);
+}
+
+.settings-display-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-display-actions button {
+  flex: 1;
+  min-width: 140px;
+  min-height: 40px;
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.settings-display-actions button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.settings-display-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .settings-footer {
@@ -2259,10 +2465,11 @@ button:disabled {
 .enemy-pill[data-type="rusher"] .swatch { background: #f97316; }
 .enemy-pill[data-type="shielded"] .swatch { background: #60a5fa; }
 
-/* Desktop / Steam build */
+/* Desktop / Steam build — fixed 1280×800 window on Windows/Linux */
 .platform-desktop html,
 .platform-desktop body {
-  height: 100%;
+  width: var(--swd-window-w, 100%);
+  height: var(--swd-window-h, 100%);
   overflow: hidden;
 }
 
@@ -2271,12 +2478,18 @@ button:disabled {
 }
 
 .platform-desktop #app-shell {
-  height: 100vh;
-  height: 100dvh;
+  width: var(--swd-window-w, 100%);
+  height: var(--swd-window-h, 100%);
   min-height: 0;
   min-width: 0;
   overflow: hidden;
   padding-bottom: 0;
+}
+
+.platform-fixed-window #app-shell,
+.platform-fixed-window #game-root {
+  width: var(--swd-window-w);
+  height: var(--swd-window-h);
 }
 
 .platform-desktop #game-root {
@@ -2284,67 +2497,60 @@ button:disabled {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  flex-direction: row;
   justify-content: center;
   align-items: center;
-  gap: clamp(10px, 1.5vw, 20px);
-  padding: clamp(8px, 1.2vmin, 18px);
+  gap: 18px;
+  padding: 18px;
 }
 
 .platform-desktop #canvas-wrap {
   flex: 0 0 auto;
   min-width: 0;
   min-height: 0;
-  max-width: none;
-  max-height: none;
   align-self: center;
 }
 
-.platform-desktop #hud {
-  flex: 0 0 auto;
-  width: clamp(240px, 22vw, 300px);
-  min-width: 0;
-  max-height: 100%;
+.platform-desktop .hud-panel {
+  flex: 0 0 var(--swd-hud-panel-w, 250px);
+  width: var(--swd-hud-panel-w, 250px);
+  min-width: var(--swd-hud-panel-w, 250px);
+  max-width: var(--swd-hud-panel-w, 250px);
   overflow-x: hidden;
   overflow-y: auto;
   align-self: center;
 }
 
-/* Narrow desktop / tall windows: stack board above HUD */
-@media (max-width: 860px) {
-  .platform-desktop #game-root {
-    flex-direction: column;
-    overflow-x: hidden;
-    overflow-y: auto;
-    justify-content: flex-start;
-    align-items: center;
-  }
-
-  .platform-desktop #hud {
-    width: min(100%, 480px);
-    max-height: none;
-    order: 2;
-  }
-
-  .platform-desktop #canvas-wrap {
-    order: 1;
-    flex: 0 0 auto;
-  }
+.platform-desktop .piece-previews-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
-/* Wide but short (e.g. half-height window): keep side-by-side */
-@media (max-height: 480px) and (min-width: 861px) {
-  .platform-desktop #game-root {
-    flex-direction: row;
-    overflow: hidden;
-  }
+.platform-desktop .hud-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 10px;
+}
 
-  .platform-desktop #hud {
-    order: 0;
-    max-height: 100%;
-  }
+.platform-fixed-window #shop-modal {
+  padding: 16px;
+  align-items: center;
+  justify-content: center;
+}
 
-  .platform-desktop #canvas-wrap {
-    order: 0;
-  }
+.platform-fixed-window .shop-modal-content {
+  width: min(680px, calc(var(--swd-window-w, 1280px) - 80px));
+  max-width: none;
+  max-height: calc(var(--swd-window-h, 800px) - 48px);
+  height: auto;
+}
+
+.platform-fixed-window .shop-offer-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.platform-fixed-window .shop-deck-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 

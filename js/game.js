@@ -26,10 +26,12 @@ class Game {
     this._wasPausedBeforeHelp = false;
     this.banner = null;
     this.waveSpawner = null;
+    this.waveEnding = false;
+    this.waveEndTimer = 0;
     this.input = null;
     this.shopCards = []; // currently offered shop cards (each annotated with .bought boolean)
     this.pendingShopBuyIndex = -1; // shop card awaiting deck swap (-1 = none)
-    this.waveSpeed = 1;  // player-controlled wave time-scale (1x / 2x / 3x)
+    this.waveSpeed = CONFIG.DEFAULT_WAVE_SPEED ?? 3;  // player-controlled wave time-scale (1x / 2x / 3x)
     this.waveStats = { kills: 0, points: 0, income: 0 };
     this.heldCard = null;          // Tetris-style hold slot
     this.holdUsedThisPiece = false; // reset on lock so each spawn allows one hold
@@ -131,10 +133,11 @@ class Game {
     const rngFn = () => this.rng.next();
     this.runStats = createRunStats();
     const shapePool = this.gameMode.shapes;
-    const starterCards = this.gameMode.randomDeck
-      ? generateRandomDeck(1, CONFIG.DECK_SIZE, rngFn, shapePool)
-      : makeStarterDeck(rngFn, shapePool);
+    const starterCards = makeStarterDeck(rngFn, shapePool);
     this.deck = new Deck(starterCards, rngFn);
+    if (this.difficulty.bottomWallFill) {
+      applyBrutalBottomWallFill(this.grid, rngFn);
+    }
     this.phase = 'PLACING_BASE';
     this.piecesLeftThisBuild = 1;
     this.spawnNextPiece();
@@ -414,13 +417,12 @@ class Game {
       return;
     }
 
-    const fullRows = this.grid.findFullRows();
+    const fullRows = this.grid.findRowsClearedByPlacement(placed);
     if (fullRows.length > 0) {
       for (const y of fullRows) {
         this.effects.push({ type: 'lineClear', x: 0, y, t: 0, life: 0.4 });
       }
       const destroyed = this.grid.clearRows(fullRows);
-      const baseDestroyed = destroyed.some((d) => d.cell.isBase);
       const bonus = CONFIG.LINE_BONUS[fullRows.length] || (fullRows.length * 200);
       this.addPoints(bonus);
       this.runStats.lineClears += 1;
@@ -431,10 +433,6 @@ class Game {
       if (typeof AudioEngine !== 'undefined') AudioEngine.play('line');
       const reduceMotion = typeof getSetting === 'function' && getSetting('reduceMotion');
       if (!reduceMotion) this.screenShake = { t: 0, life: 0.25, amp: 4 + fullRows.length };
-      if (baseDestroyed) {
-        this.lose('Your home base was cleared away with the line!');
-        return;
-      }
       if (typeof recalculateGridSynergy === 'function') {
         recalculateGridSynergy(this.grid);
       }
@@ -478,6 +476,8 @@ class Game {
       AudioEngine.setMusicPhase('wave');
     }
     this.waveStats = { kills: 0, points: 0, income: 0 };
+    this.waveEnding = false;
+    this.waveEndTimer = 0;
     // Wall passive income at the start of each wave (scaled by per-cell effectiveness).
     let income = 0;
     this.grid.forEachCell((cell) => {
@@ -537,12 +537,26 @@ class Game {
     }
     this.projectiles = this.projectiles.filter((p) => !p.dead);
 
+    if (this.waveEnding) {
+      this.waveEndTimer -= dt;
+      if (this.waveEndTimer <= 0) {
+        this.waveEnding = false;
+        this.endWave();
+      }
+      return;
+    }
+
     if (sp && sp.i >= sp.schedule.length && this.enemies.length === 0) {
-      this.endWave();
+      const delay = CONFIG.WAVE_END_DELAY ?? 1;
+      this.waveEnding = true;
+      this.waveEndTimer = delay;
+      this.setBanner(`Wave ${this.wave} cleared!`, delay + 0.4);
     }
   }
 
   endWave() {
+    this.waveEnding = false;
+    this.waveEndTimer = 0;
     this.clearCombatVisuals();
     const stats = this.waveStats || { kills: 0, points: 0, income: 0 };
     const summary = `Wave ${this.wave} cleared — ${stats.kills} kills • +${stats.points + stats.income} pts`;
@@ -656,6 +670,8 @@ class Game {
     this.projectiles = [];
     this.enemies = [];
     this.waveSpawner = null;
+    this.waveEnding = false;
+    this.waveEndTimer = 0;
     const combatFx = new Set(['muzzle', 'spark', 'splash']);
     this.effects = this.effects.filter((fx) => !combatFx.has(fx.type));
   }

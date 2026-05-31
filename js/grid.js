@@ -35,44 +35,66 @@ class Grid {
     return false;
   }
 
+  isRowFull(y) {
+    for (let x = 0; x < this.w; x++) {
+      if (this.cells[y][x] === null) return false;
+    }
+    return true;
+  }
+
   // Find full rows. Returns array of row indices (top-to-bottom).
   findFullRows() {
     const full = [];
     for (let y = 0; y < this.h; y++) {
-      let allFilled = true;
-      for (let x = 0; x < this.w; x++) {
-        if (this.cells[y][x] === null) { allFilled = false; break; }
-      }
-      if (allFilled) full.push(y);
+      if (this.isRowFull(y)) full.push(y);
     }
     return full;
   }
 
-  // Clear specified rows and apply true Tetris gravity (rows above fall down).
-  // Returns the cells destroyed (so caller can refund/log them).
-  clearRows(rows) {
-    if (rows.length === 0) return [];
-    const destroyed = [];
-    const rowSet = new Set(rows);
-    // Collect destroyed cells.
-    for (const y of rows) {
+  // Full rows completed by this lock: every column filled and the new piece occupies the row.
+  findRowsClearedByPlacement(placedCells) {
+    const placedInRow = new Set();
+    for (const { x, y } of placedCells) {
+      if (this.inBounds(x, y)) placedInRow.add(y);
+    }
+    const full = [];
+    for (const y of placedInRow) {
+      if (this.isRowFull(y)) full.push(y);
+    }
+    return full.sort((a, b) => a - b);
+  }
+
+  // Drop all blocks down within each column (including home base).
+  applyGravity() {
+    for (let y = this.h - 2; y >= 0; y--) {
       for (let x = 0; x < this.w; x++) {
-        if (this.cells[y][x] !== null) {
-          destroyed.push({ x, y, cell: this.cells[y][x] });
+        const cell = this.cells[y][x];
+        if (!cell) continue;
+        let dropY = y;
+        while (dropY + 1 < this.h && this.cells[dropY + 1][x] === null) dropY++;
+        if (dropY !== y) {
+          this.cells[dropY][x] = cell;
+          this.cells[y][x] = null;
         }
       }
     }
-    // Build the new grid by stacking the rows that survive at the bottom.
-    const newRows = [];
-    for (let y = this.h - 1; y >= 0; y--) {
-      if (!rowSet.has(y)) newRows.push(this.cells[y]);
+  }
+
+  // Clear fully filled rows: remove non-base blocks, keep home base, then gravity.
+  // Returns the cells destroyed (so caller can award points / stats).
+  clearRows(rows) {
+    if (rows.length === 0) return [];
+    const destroyed = [];
+    for (const y of rows) {
+      if (!this.isRowFull(y)) continue;
+      for (let x = 0; x < this.w; x++) {
+        const cell = this.cells[y][x];
+        if (cell === null || cell.isBase) continue;
+        destroyed.push({ x, y, cell });
+        this.cells[y][x] = null;
+      }
     }
-    while (newRows.length < this.h) newRows.push(Array(this.w).fill(null));
-    // newRows is bottom-up; reverse so index 0 is the top row.
-    newRows.reverse();
-    // The first (this.h - rows.length) entries are the original top rows; we need
-    // them shifted DOWN by rows.length. The above construction already does that.
-    this.cells = newRows;
+    this.applyGravity();
     if (destroyed.length > 0 && typeof recalculateGridSynergy === 'function') {
       recalculateGridSynergy(this);
     }
@@ -166,4 +188,19 @@ class Grid {
       }
     }
   }
+}
+
+// Brutal difficulty: bottom half is common walls with one random gap per row (line-clearable).
+function applyBrutalBottomWallFill(grid, rngFn) {
+  const rng = typeof rngFn === 'function' ? rngFn : Math.random;
+  const wallCard = makeCard('wall', 'common', 'O');
+  const startY = Math.floor(grid.h / 2);
+  const placed = [];
+  for (let y = startY; y < grid.h; y++) {
+    const gapX = Math.floor(rng() * grid.w);
+    for (let x = 0; x < grid.w; x++) {
+      if (x !== gapX) placed.push({ x, y });
+    }
+  }
+  grid.registerPlacement(placed, wallCard, false);
 }

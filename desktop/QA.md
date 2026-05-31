@@ -9,11 +9,12 @@ STEAM_APP_ID=480 npm run start:steam
 
 For shipping builds, set `SWD_REQUIRE_STEAM=1` and your real App ID.
 
-## Display (1280×800)
+## Display (1280×800 fixed)
 
-- [ ] Game board and HUD fit without excessive scrolling at 1280×800
-- [ ] `.platform-steam` layout keeps canvas and HUD side-by-side on Deck landscape
-- [ ] Text remains readable on the 7" screen (stats, deck chips, shop)
+Shipping Windows/Linux builds use a **non-resizable 1280×800** window. Verify:
+
+- [ ] Board and HUD are centered side-by-side with no empty bars or scrollbars
+- [ ] Title screen fits without scrolling
 
 ## Input
 

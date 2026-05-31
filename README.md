@@ -14,7 +14,7 @@ See [`desktop/README.md`](desktop/README.md) for the Electron wrapper, Steamwork
 2. **Build phase.** Each round, four pieces are drawn from your deck. Place them on the grid. Filled rows clear (and award points), but the towers in those rows are destroyed.
 3. **Wave phase.** Cells act as towers based on the role on their card. Walkers and brutes path with A\*; flyers ignore terrain; brutes break walls. Reach zero enemies to clear the wave.
 4. **Shop (every 5 waves).** Browse 10 random cards across 5 rarities. Click **Buy**, then click any of your existing 20 deck cards to swap it out. Repeat for as many purchases as you can afford.
-5. **Win** by clearing all 100 waves. **Lose** if your **home base HP** reaches zero, your base is line-cleared away, or blocks reach the spawn area.
+5. **Win** by clearing all 100 waves. **Lose** if your **home base HP** reaches zero or blocks reach the spawn area. Only a **completely full row** clears (non-base blocks in that row are removed; home base cells remain and fall with gravity).
 
 Your home base has a shared **HP pool** (from the HP of the piece you place first). Enemies that reach base cells **siege** it over time instead of ending the run instantly. In the shop, spend points on **Fortify Base** (+30 max HP per level, escalating cost) in addition to card swaps.
 

@@ -46,7 +46,7 @@ class UI {
     this.shopCancelBuy = document.getElementById('shop-cancel-buy');
     this.shopStepBrowse = document.getElementById('shop-step-browse');
     this.shopStepSwap = document.getElementById('shop-step-swap');
-    this.shopStepIndicator = document.getElementById('shop-step-indicator');
+    this.shopStepLabel = document.getElementById('shop-step-label');
     this.shopPendingCard = document.getElementById('shop-pending-card');
     this.shopUpgrades = document.getElementById('shop-upgrades');
     this.deckSortBar = document.getElementById('deck-sort-bar');
@@ -59,6 +59,9 @@ class UI {
     this.settingsClose = document.getElementById('settings-close');
     this.settingsQuit = document.getElementById('settings-quit');
     this.settingsForm = document.getElementById('settings-form');
+    this.settingsDisplaySection = document.getElementById('settings-display-section');
+    this.settingsFullscreenBtn = document.getElementById('settings-fullscreen-btn');
+    this.settingsMaximizeBtn = document.getElementById('settings-maximize-btn');
 
     this.shopDeckSort = { key: 'shape', asc: true };
     this._lastShopScore = null;
@@ -119,6 +122,16 @@ class UI {
         if (typeof AudioEngine !== 'undefined') AudioEngine.applyVolumes();
       });
     }
+    if (typeof Platform !== 'undefined' && Platform.canControlWindow) {
+      if (this.settingsDisplaySection) this.settingsDisplaySection.classList.remove('hidden');
+      if (this.settingsFullscreenBtn) {
+        this.settingsFullscreenBtn.addEventListener('click', () => this.onToggleFullscreen());
+      }
+      if (this.settingsMaximizeBtn) {
+        this.settingsMaximizeBtn.addEventListener('click', () => this.onToggleMaximize());
+      }
+      Platform.onWindowDisplayChange(() => this.syncDisplayButtons());
+    }
 
     if (this.modeGrid) {
       this.modeGrid.addEventListener('click', (e) => {
@@ -150,6 +163,11 @@ class UI {
     });
 
     window.addEventListener('keydown', (e) => {
+      if (e.code === 'F11' && typeof Platform !== 'undefined' && Platform.canControlWindow) {
+        e.preventDefault();
+        this.onToggleFullscreen();
+        return;
+      }
       if (e.code !== 'Escape') return;
       const settingsOpen = this.settingsModal && !this.settingsModal.classList.contains('hidden');
       if (settingsOpen) {
@@ -201,8 +219,34 @@ class UI {
   openSettings() {
     if (!this.settingsModal || !this.settingsForm) return;
     applySettingsToForm(this.settingsForm);
+    this.syncDisplayButtons();
     this.settingsModal.classList.remove('hidden');
     if (typeof AudioEngine !== 'undefined') AudioEngine.unlock();
+  }
+
+  async syncDisplayButtons() {
+    if (typeof Platform === 'undefined' || !Platform.canControlWindow) return;
+    const state = await Platform.getWindowDisplayState();
+    if (this.settingsFullscreenBtn) {
+      this.settingsFullscreenBtn.textContent = state.fullscreen ? 'Exit fullscreen' : 'Fullscreen';
+    }
+    if (this.settingsMaximizeBtn) {
+      this.settingsMaximizeBtn.textContent = state.maximized ? 'Restore window' : 'Maximize';
+    }
+  }
+
+  async onToggleFullscreen() {
+    if (typeof Platform === 'undefined' || !Platform.toggleFullscreen) return;
+    await Platform.toggleFullscreen();
+    this.syncDisplayButtons();
+    requestAnimationFrame(() => window.TTD?.fitGameCanvas?.());
+  }
+
+  async onToggleMaximize() {
+    if (typeof Platform === 'undefined' || !Platform.toggleMaximize) return;
+    await Platform.toggleMaximize();
+    this.syncDisplayButtons();
+    requestAnimationFrame(() => window.TTD?.fitGameCanvas?.());
   }
 
   closeSettings() {
@@ -438,8 +482,10 @@ class UI {
     this.renderShop();
     this.game.setBanner('Pick a deck card to remove (cost not charged yet)', 1.4);
     if (this.shopStepSwap) {
-      this.shopStepSwap.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      this.shopStepSwap.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
+    const shopBody = document.getElementById('shop-body');
+    if (shopBody) shopBody.scrollTop = 0;
   }
 
   // Click a deck card while a buy is pending. Confirm the swap.
@@ -462,10 +508,15 @@ class UI {
     if (this.shopPoints) this.shopPoints.textContent = String(game.score);
     const isPending = game.hasPendingShopBuy();
 
-    if (this.shopStepIndicator) {
-      this.shopStepIndicator.textContent = isPending
-        ? 'Step 2 of 2 — Pick a card to remove'
-        : 'Step 1 of 2 — Choose a card to buy';
+    if (this.shopStepLabel) {
+      this.shopStepLabel.textContent = isPending ? 'Pick a card to remove' : 'Pick a card to buy';
+      this.shopStepLabel.dataset.step = isPending ? 'swap' : 'browse';
+    }
+    if (this.shopClose) {
+      this.shopClose.textContent = isPending ? 'Leave shop' : 'Next wave';
+    }
+    if (this.shopUpgrades) {
+      this.shopUpgrades.classList.toggle('hidden', isPending);
     }
     if (this.shopStepBrowse) {
       this.shopStepBrowse.classList.toggle('hidden', isPending);
@@ -490,16 +541,16 @@ class UI {
     if (!this.shopList) return;
     this.shopList.innerHTML = '';
     game.shopCards.forEach((sc, idx) => {
-      const card = makeCardEl(sc, { showCost: true });
+      const card = makeCardEl(sc, { layout: 'tile' });
       const buyBtn = document.createElement('button');
       buyBtn.type = 'button';
       const canAfford = game.score >= sc.cost;
       if (sc.bought) {
         card.classList.add('bought');
-        buyBtn.textContent = 'BOUGHT';
+        buyBtn.textContent = 'Bought';
         buyBtn.disabled = true;
       } else {
-        buyBtn.textContent = canAfford ? `Buy — ${sc.cost}` : `Need ${sc.cost - game.score} more`;
+        buyBtn.textContent = canAfford ? `Buy · ${sc.cost}` : `Need ${sc.cost - game.score}`;
         buyBtn.disabled = !canAfford;
         if (canAfford) {
           card.classList.add('shop-selectable');
@@ -507,6 +558,8 @@ class UI {
             if (e.target.closest('button')) return;
             this.beginPendingBuy(idx);
           });
+        } else {
+          card.classList.add('disabled');
         }
         buyBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -524,11 +577,12 @@ class UI {
       this.shopPendingCard.innerHTML = '';
       const sc = game.shopCards[pendingIdx];
       if (sc) {
-        const summary = document.createElement('div');
-        summary.className = 'shop-pending-label muted';
-        summary.textContent = 'You are buying:';
+        const summary = document.createElement('p');
+        summary.className = 'shop-pending-label';
+        summary.textContent = 'Buying';
         this.shopPendingCard.appendChild(summary);
-        const card = makeCardEl(sc, { showCost: true });
+        const card = makeCardEl(sc, { layout: 'tile' });
+        card.classList.add('shop-pending-tile');
         const footer = card.querySelector('.footer');
         if (footer) footer.remove();
         this.shopPendingCard.appendChild(card);
@@ -538,16 +592,12 @@ class UI {
     if (!this.shopDeckGrid) return;
     this.shopDeckGrid.innerHTML = '';
     if (this.shopDeckHint) {
-      this.shopDeckHint.textContent = 'Tap any deck card below to complete the swap.';
+      this.shopDeckHint.textContent = 'Tap a card below to remove it from your deck.';
     }
     if (game.deck) {
       const sorted = sortDeckCards(game.deck.list(), this.shopDeckSort.key, this.shopDeckSort.asc);
       for (const dc of sorted) {
-        const card = makeCardEl(dc, { showCost: false });
-        card.classList.add('removable');
-        card.title = 'Tap to remove this card';
-        card.addEventListener('click', () => this.confirmSwap(dc.id));
-        this.shopDeckGrid.appendChild(card);
+        this.shopDeckGrid.appendChild(makeShopDeckChip(dc, () => this.confirmSwap(dc.id)));
       }
     }
     this.updateSortButtons();
@@ -776,9 +826,30 @@ function formatStats(stats) {
 }
 
 // Build a card UI element used by both the shop and the deck-pick panes.
+function makeShopDeckChip(card, onPick) {
+  const chip = document.createElement('button');
+  chip.type = 'button';
+  chip.className = 'deck-chip shop-deck-chip';
+  chip.dataset.rarity = card.rarity;
+  chip.dataset.shape = card.shape;
+  chip.title = `${card.name} — ${card.role} (${card.rarity})`;
+  const label = document.createElement('span');
+  label.className = 'deck-chip-shape';
+  label.textContent = card.shape;
+  chip.appendChild(label);
+  const mark = document.createElement('span');
+  mark.className = 'role-mark';
+  mark.textContent = (ROLE_GLYPHS[card.role] || card.role[0]).slice(0, 1);
+  chip.appendChild(mark);
+  chip.addEventListener('click', onPick);
+  return chip;
+}
+
 function makeCardEl(card, opts = {}) {
+  const isTile = opts.layout === 'tile';
+  const isRow = opts.layout === 'row';
   const el = document.createElement('div');
-  el.className = 'card';
+  el.className = 'card' + (isTile ? ' card-tile' : isRow ? ' card-row' : '');
   el.dataset.rarity = card.rarity;
   el.style.borderColor = CONFIG.RARITY_COLORS[card.rarity] || 'transparent';
 
@@ -788,20 +859,19 @@ function makeCardEl(card, opts = {}) {
   rarity.style.color = CONFIG.RARITY_COLORS[card.rarity];
   el.appendChild(rarity);
 
-  const name = document.createElement('div');
-  name.className = 'name';
   const shapeBadge = document.createElement('span');
-  shapeBadge.className = 'shape-badge';
+  shapeBadge.className = isRow ? 'shape-badge shape-badge-lg' : 'shape-badge';
   shapeBadge.style.background = CONFIG.COLORS[card.shape];
   shapeBadge.textContent = card.shape;
-  name.appendChild(shapeBadge);
+
+  const name = document.createElement('div');
+  name.className = 'name';
+  if (!isRow) name.appendChild(shapeBadge);
   name.appendChild(document.createTextNode(card.name));
-  el.appendChild(name);
 
   const roleLine = document.createElement('div');
   roleLine.className = 'role-line';
   roleLine.textContent = `${ROLE_GLYPHS[card.role] || ''} ${card.role}`;
-  el.appendChild(roleLine);
 
   const stats = document.createElement('div');
   stats.className = 'stats';
@@ -811,19 +881,41 @@ function makeCardEl(card, opts = {}) {
     pill.textContent = part;
     stats.appendChild(pill);
   }
-  el.appendChild(stats);
 
   const footer = document.createElement('div');
-  footer.className = 'footer';
-  if (opts.showCost) {
+  footer.className = isRow ? 'card-row-actions' : 'footer';
+  if (opts.showCost && !isTile) {
     const cost = document.createElement('span');
     cost.className = 'cost';
     cost.textContent = `${card.cost} pts`;
     footer.appendChild(cost);
-  } else {
+  } else if (!isRow && !isTile) {
     footer.appendChild(document.createElement('span'));
   }
-  el.appendChild(footer);
+
+  if (isRow) {
+    const shapeCol = document.createElement('div');
+    shapeCol.className = 'card-row-shape';
+    shapeCol.appendChild(shapeBadge);
+    const body = document.createElement('div');
+    body.className = 'card-row-body';
+    body.appendChild(name);
+    body.appendChild(roleLine);
+    body.appendChild(stats);
+    el.appendChild(shapeCol);
+    el.appendChild(body);
+    if (opts.showCost) el.appendChild(footer);
+  } else if (isTile) {
+    el.appendChild(name);
+    el.appendChild(roleLine);
+    el.appendChild(stats);
+    el.appendChild(footer);
+  } else {
+    el.appendChild(name);
+    el.appendChild(roleLine);
+    el.appendChild(stats);
+    el.appendChild(footer);
+  }
   return el;
 }
 

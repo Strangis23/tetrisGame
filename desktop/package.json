@@ -28,6 +28,7 @@
       "main.js",
       "preload.js",
       "steam-bridge.js",
+      "window-config.js",
       "../index.html",
       "../highscores.html",
       "../privacy.html",

@@ -6,7 +6,6 @@ class MobileControls {
     this.canvasWrap = canvasWrap;
     this.root = document.getElementById('mobile-controls');
     this.toggleEl = document.getElementById('mobile-controls-toggle');
-    this.hudToggleBtn = document.getElementById('mobile-controls-hud-btn');
     this.waveSpeedBtn = this.root?.querySelector('[data-action="waveSpeed"]');
 
     const coarse = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
@@ -16,11 +15,6 @@ class MobileControls {
     if (this.toggleEl) {
       this.toggleEl.addEventListener('change', () => {
         this.setEnabled(this.toggleEl.checked);
-      });
-    }
-    if (this.hudToggleBtn) {
-      this.hudToggleBtn.addEventListener('click', () => {
-        this.setEnabled(!this.enabled);
       });
     }
 
@@ -40,10 +34,6 @@ class MobileControls {
 
   _syncToggleUi() {
     if (this.toggleEl) this.toggleEl.checked = this.enabled;
-    if (this.hudToggleBtn) {
-      this.hudToggleBtn.setAttribute('aria-pressed', this.enabled ? 'true' : 'false');
-      this.hudToggleBtn.classList.toggle('active', this.enabled);
-    }
   }
 
   syncVisibility() {
@@ -66,8 +56,11 @@ class MobileControls {
     }
 
     if (this.waveSpeedBtn) {
-      this.waveSpeedBtn.textContent = `${this.game.waveSpeed || 1}x`;
+      const def = CONFIG.DEFAULT_WAVE_SPEED ?? 3;
+      this.waveSpeedBtn.textContent = `${this.game.waveSpeed || def}x`;
     }
+
+    requestAnimationFrame(() => window.TTD?.fitGameCanvas?.());
   }
 
   _bindButtons() {

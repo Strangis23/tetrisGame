@@ -110,11 +110,45 @@
     }
   }
 
+  const winApi = isDesktop && injected.window ? injected.window : null;
+
+  async function toggleFullscreen() {
+    if (!winApi?.toggleFullscreen) return false;
+    return winApi.toggleFullscreen();
+  }
+
+  async function toggleMaximize() {
+    if (!winApi?.toggleMaximize) return false;
+    return winApi.toggleMaximize();
+  }
+
+  async function getWindowDisplayState() {
+    if (!winApi) return { fullscreen: false, maximized: false };
+    const [fullscreen, maximized] = await Promise.all([
+      winApi.isFullscreen?.() ?? false,
+      winApi.isMaximized?.() ?? false,
+    ]);
+    return { fullscreen: !!fullscreen, maximized: !!maximized };
+  }
+
+  function onWindowDisplayChange(cb) {
+    if (!winApi?.onDisplayChange) return () => {};
+    return winApi.onDisplayChange(cb);
+  }
+
   window.Platform = {
     isDesktop,
     isSteam,
     hasAds: !isDesktop,
     hasServiceWorker: !isDesktop,
+    fixedWindow: !!(injected && injected.fixedWindow),
+    canControlWindow: !!winApi,
+    windowWidth: injected?.windowWidth || 1280,
+    windowHeight: injected?.windowHeight || 800,
+    hudPanelWidth: injected?.hudPanelWidth || 250,
+    hudWidth: injected?.hudWidth || (injected?.hudPanelWidth || 250) * 2,
+    layoutPadding: injected?.layoutPadding || 18,
+    layoutGap: injected?.layoutGap || 18,
     cloudKeys: CLOUD_KEYS,
     syncFromCloud,
     persistKey,
@@ -123,11 +157,21 @@
     runSteamCallbacks,
     setRichPresence,
     quitApp,
+    toggleFullscreen,
+    toggleMaximize,
+    getWindowDisplayState,
+    onWindowDisplayChange,
   };
 
   if (isDesktop) {
     document.documentElement.classList.add('platform-desktop');
     if (isSteam) document.documentElement.classList.add('platform-steam');
+    if (window.Platform.fixedWindow) {
+      document.documentElement.classList.add('platform-fixed-window');
+      document.documentElement.style.setProperty('--swd-window-w', `${window.Platform.windowWidth}px`);
+      document.documentElement.style.setProperty('--swd-window-h', `${window.Platform.windowHeight}px`);
+      document.documentElement.style.setProperty('--swd-hud-panel-w', `${window.Platform.hudPanelWidth}px`);
+    }
   }
 
   if (isSteam) {

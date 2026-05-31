@@ -23,6 +23,9 @@ const CONFIG = {
 
   // Player-controlled wave time-scale options. Cycled by pressing F during waves.
   WAVE_SPEED_STEPS: [1, 2, 3],
+  DEFAULT_WAVE_SPEED: 3,
+  /** Pause after last enemy dies before build/shop (seconds, real time). */
+  WAVE_END_DELAY: 1,
 
   // Click-to-repair during BUILD / PLACING_BASE: cost in points per missing HP.
   REPAIR_COST_PER_HP: 10,
@@ -185,6 +188,8 @@ const CONFIG = {
       enemySpeedMul: 1.12,
       holdEnabled: false,
       wavesPerShop: 8,
+      /** Bottom half pre-filled with walls (one gap per row); gaps can be closed for line clears. */
+      bottomWallFill: true,
     },
   },
 };

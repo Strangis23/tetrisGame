@@ -23,6 +23,11 @@ Environment variables:
 | `STEAM_APP_ID` | `480` | Steam App ID |
 | `SWD_REQUIRE_STEAM` | off | Exit if Steam API fails to init |
 | `SWD_DEVTOOLS` | off | Open Chromium DevTools |
+| `SWD_ALLOW_RESIZE` | off | Allow window resizing (dev only; shipping builds are fixed **1280×800**) |
+
+## Window size
+
+Windows and Linux builds use a **fixed 1280×800** client area (Steam Deck landscape). The window is not resizable unless `SWD_ALLOW_RESIZE=1`. Edit [`window-config.js`](window-config.js) to change the size.
 
 ## Production builds
 

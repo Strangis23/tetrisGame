@@ -157,17 +157,30 @@ function pickShape(shapePool, rngFn) {
   return pool[Math.floor(rng() * pool.length)];
 }
 
-// Generate the player's starting deck: 10 walls + 10 shooters, all common.
+// Fisher–Yates shuffle (mutates array).
+function shuffleInPlace(arr, rngFn) {
+  const rng = typeof rngFn === 'function' ? rngFn : Math.random;
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// Starting deck: exactly half walls, half shooters (all common), then shuffled.
 function makeStarterDeck(rngFn, shapePool) {
   const rng = typeof rngFn === 'function' ? rngFn : Math.random;
+  const n = CONFIG.DECK_SIZE;
+  const walls = Math.floor(n / 2);
+  const shooters = n - walls;
   const cards = [];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < walls; i++) {
     cards.push(makeCard('wall', 'common', pickShape(shapePool, rng)));
   }
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < shooters; i++) {
     cards.push(makeCard('shooter', 'common', pickShape(shapePool, rng)));
   }
-  return cards;
+  return shuffleInPlace(cards, rng);
 }
 
 function generateRandomDeck(wave, n = CONFIG.DECK_SIZE, rngFn, shapePool) {
