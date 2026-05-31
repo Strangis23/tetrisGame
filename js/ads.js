@@ -1,5 +1,6 @@
-// Banner ads (Google AdSense). No rewarded ads — gameplay is never gated or boosted by ads.
+// Banner ads (Google AdSense). Disabled in desktop/Steam builds via Platform.hasAds.
 (function () {
+  if (typeof Platform !== 'undefined' && !Platform.hasAds) return;
   const ADS = {
     enabled: true,
     clientId: 'ca-pub-6914309383865227',

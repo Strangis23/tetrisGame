@@ -1,0 +1,69 @@
+{
+  "name": "stackwave-defense",
+  "productName": "Stackwave Defense",
+  "version": "1.0.0",
+  "description": "Stackwave Defense — deck-builder tower defense",
+  "main": "main.js",
+  "author": "Stackwave Defense",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "start:steam": "STEAM_APP_ID=480 electron .",
+    "pack": "electron-builder --dir",
+    "build": "electron-builder --win --linux",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "stage:steam": "bash scripts/stage-steam-content.sh",
+    "steam:upload": "bash scripts/upload-steam.sh"
+  },
+  "build": {
+    "appId": "com.stackwave.defense",
+    "productName": "Stackwave Defense",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "steam-bridge.js",
+      "../index.html",
+      "../highscores.html",
+      "../privacy.html",
+      "../styles.css",
+      "../manifest.json",
+      "../js/**/*",
+      "../assets/**/*",
+      "../audio/**/*",
+      "../steam/**/*",
+      "../steam_appid.txt",
+      "!../github-pages-root/**",
+      "!../desktop/dist/**",
+      "!../desktop/node_modules/**",
+      "!../sw.js",
+      "!../ads.txt"
+    ],
+    "asarUnpack": [
+      "**/*.node",
+      "**/steamworks.js/**"
+    ],
+    "win": {
+      "target": ["zip", "portable"],
+      "icon": "build/icon.ico"
+    },
+    "linux": {
+      "target": ["AppImage", "tar.gz"],
+      "icon": "build/icon.png",
+      "category": "Game",
+      "executableName": "stackwave-defense"
+    }
+  },
+  "dependencies": {
+    "steamworks.js": "^0.4.0"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  }
+}

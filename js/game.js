@@ -39,12 +39,20 @@ class Game {
     this.baseHpBonus = 0;       // shop fortify purchases
     this.baseWallBonus = 0;     // legendary wall passive (stacked per placed cell)
     this._basePieceHp = 0;      // sum of card HP on base cells at placement
+    this.runStats = createRunStats();
+    this.difficulty = CONFIG.DIFFICULTY_PRESETS.normal;
+    this.difficultyId = 'normal';
+    this.dailySeed = false;
+    this.rng = null;
+    this.screenShake = null;
   }
 
   // Swap the active piece with the held card (or draw a new one if hold is empty).
   // Limited to one swap per piece to prevent stalling.
   holdSwap() {
+    if (this.paused) return false;
     if (this.phase !== 'BUILD' && this.phase !== 'PLACING_BASE') return false;
+    if (this.difficulty && this.difficulty.holdEnabled === false) return false;
     if (!this.activePiece) return false;
     if (this.holdUsedThisPiece) return false;
     const currentCard = this.activePiece.card;
@@ -111,13 +119,34 @@ class Game {
     if (this.phase === 'WAVE') this.setBanner(`${this.waveSpeed}x`, 0.5);
   }
 
-  startNewRun() {
+  startNewRun(opts = {}) {
     this.reset();
-    this.deck = new Deck(makeStarterDeck());
+    const presetId = opts.difficulty || 'normal';
+    this.difficultyId = presetId;
+    this.difficulty = CONFIG.DIFFICULTY_PRESETS[presetId] || CONFIG.DIFFICULTY_PRESETS.normal;
+    this.dailySeed = !!opts.dailySeed;
+    this.gameModeId = opts.gameMode || 'classic';
+    this.gameMode = typeof getGameMode === 'function' ? getGameMode(this.gameModeId) : { shapes: null, shopEnabled: true, randomDeck: false };
+    this.rng = createRunRng({ dailySeed: this.dailySeed });
+    const rngFn = () => this.rng.next();
+    this.runStats = createRunStats();
+    const shapePool = this.gameMode.shapes;
+    const starterCards = this.gameMode.randomDeck
+      ? generateRandomDeck(1, CONFIG.DECK_SIZE, rngFn, shapePool)
+      : makeStarterDeck(rngFn, shapePool);
+    this.deck = new Deck(starterCards, rngFn);
     this.phase = 'PLACING_BASE';
     this.piecesLeftThisBuild = 1;
     this.spawnNextPiece();
-    this.setBanner('Place Your Home Base', 1.6);
+    const modeLabel = this.gameMode.name && this.gameMode.id !== 'classic' ? `${this.gameMode.name} · ` : '';
+    this.setBanner(`${modeLabel}Place Your Home Base`, 1.6);
+    if (typeof AudioEngine !== 'undefined') AudioEngine.setMusicPhase('build');
+  }
+
+  addPoints(amount) {
+    if (amount <= 0) return;
+    this.score += amount;
+    if (this.runStats) this.runStats.totalPointsEarned += amount;
   }
 
   setBanner(text, life = 1.4) {
@@ -131,7 +160,12 @@ class Game {
       return;
     }
     this.paused = !this.paused;
-    if (this.paused) this.setBanner('Paused', 99); else this.banner = null;
+    if (this.paused) {
+      this.input?.clearHeld?.();
+      this.setBanner('Paused', 99);
+    } else {
+      this.banner = null;
+    }
   }
 
   openHelp() {
@@ -140,6 +174,7 @@ class Game {
     this._wasPausedBeforeHelp = this.paused;
     this.helpOpen = true;
     this.paused = true;
+    this.input?.clearHeld?.();
     this.banner = null;
   }
 
@@ -182,7 +217,9 @@ class Game {
     this.grid.syncBaseHpDisplay(this.baseHp, this.baseMaxHp);
     if (this.baseHp <= 0) {
       this.lose('Your home base was destroyed!');
+      return;
     }
+    if (typeof AudioEngine !== 'undefined') AudioEngine.play('damage');
   }
 
   baseUpgradeCost() {
@@ -222,6 +259,7 @@ class Game {
     this.baseHpLevel += 1;
     this.baseHpBonus += hpGain;
     this.baseHp += hpGain;
+    this.runStats.baseUpgrades += 1;
     this.recomputeBasePool();
     return { ok: true, spent: cost, hpGain };
   }
@@ -232,11 +270,48 @@ class Game {
   }
 
   fallInterval() {
-    return CONFIG.FALL_SPEEDS[this.speedTier()];
+    const mul = (this.difficulty && this.difficulty.fallSpeedMul) || 1;
+    return CONFIG.FALL_SPEEDS[this.speedTier()] / mul;
   }
 
   piecesPerBuild() {
-    return CONFIG.PIECES_PER_WAVE;
+    return (this.difficulty && this.difficulty.piecesPerWave) || CONFIG.PIECES_PER_WAVE;
+  }
+
+  wavesPerShop() {
+    return (this.difficulty && this.difficulty.wavesPerShop) || CONFIG.WAVES_PER_SHOP;
+  }
+
+  _trackSynergyPeak() {
+    if (!this.grid || typeof recalculateGridSynergy !== 'function') return;
+    let peak = 0;
+    this.grid.forEachCell((cell) => {
+      if (cell.synergyRoleLinks > peak) peak = cell.synergyRoleLinks;
+    });
+    if (peak > this.runStats.maxSynergyLinks) this.runStats.maxSynergyLinks = peak;
+  }
+
+  _emitGameEnd(win, reason) {
+    const detail = {
+      win,
+      reason,
+      score: this.score,
+      wave: this.wave,
+      runStats: { ...this.runStats },
+      difficulty: this.difficultyId,
+      dailySeed: this.dailySeed,
+      gameMode: this.gameModeId,
+    };
+    if (typeof recordLifetimeRunEnd === 'function') recordLifetimeRunEnd(detail, this.runStats);
+    const unlocked = typeof checkRunAchievements === 'function'
+      ? checkRunAchievements({ ...detail, ...this.runStats, win })
+      : [];
+    detail.newAchievements = unlocked;
+    window.dispatchEvent(new CustomEvent('ttd-game-end', { detail }));
+    if (typeof AudioEngine !== 'undefined') {
+      AudioEngine.stopMusic();
+      AudioEngine.play(win ? 'win' : 'lose');
+    }
   }
 
   spawnNextPiece() {
@@ -252,17 +327,30 @@ class Game {
 
   // ---------- input handlers ----------
   movePiece(dx, dy) {
-    if (!this.activePiece) return;
-    if (this.activePiece.tryMove(this.grid, dx, dy)) this.lockTimer = 0;
+    if (this.paused || !this.activePiece) return;
+    if (this.activePiece.tryMove(this.grid, dx, dy)) {
+      this.lockTimer = 0;
+      if (typeof AudioEngine !== 'undefined') AudioEngine.play('move');
+    }
   }
   rotatePiece(dir) {
-    if (!this.activePiece) return;
-    if (this.activePiece.tryRotate(this.grid, dir)) this.lockTimer = 0;
+    if (this.paused || !this.activePiece) return;
+    if (this.activePiece.tryRotate(this.grid, dir)) {
+      this.lockTimer = 0;
+      if (typeof AudioEngine !== 'undefined') AudioEngine.play('rotate');
+    }
   }
-  softDrop(on) { this.softDropping = on; }
+  softDrop(on) {
+    if (this.paused) {
+      this.softDropping = false;
+      return;
+    }
+    this.softDropping = on;
+  }
   hardDrop() {
-    if (!this.activePiece) return;
+    if (this.paused || !this.activePiece) return;
     this.activePiece.hardDrop(this.grid);
+    if (typeof AudioEngine !== 'undefined') AudioEngine.play('drop');
     this.lockPiece();
   }
 
@@ -274,6 +362,10 @@ class Game {
     if (this.banner) {
       this.banner.t += dt;
       if (this.banner.t >= this.banner.life) this.banner = null;
+    }
+    if (this.screenShake) {
+      this.screenShake.t += dt;
+      if (this.screenShake.t >= this.screenShake.life) this.screenShake = null;
     }
     for (const fx of this.effects) fx.t += dt;
     this.effects = this.effects.filter((fx) => fx.t < fx.life);
@@ -330,7 +422,15 @@ class Game {
       const destroyed = this.grid.clearRows(fullRows);
       const baseDestroyed = destroyed.some((d) => d.cell.isBase);
       const bonus = CONFIG.LINE_BONUS[fullRows.length] || (fullRows.length * 200);
-      this.score += bonus;
+      this.addPoints(bonus);
+      this.runStats.lineClears += 1;
+      this.runStats.linesCleared += fullRows.length;
+      if (fullRows.length > this.runStats.maxLinesAtOnce) {
+        this.runStats.maxLinesAtOnce = fullRows.length;
+      }
+      if (typeof AudioEngine !== 'undefined') AudioEngine.play('line');
+      const reduceMotion = typeof getSetting === 'function' && getSetting('reduceMotion');
+      if (!reduceMotion) this.screenShake = { t: 0, life: 0.25, amp: 4 + fullRows.length };
       if (baseDestroyed) {
         this.lose('Your home base was cleared away with the line!');
         return;
@@ -338,7 +438,10 @@ class Game {
       if (typeof recalculateGridSynergy === 'function') {
         recalculateGridSynergy(this.grid);
       }
+      this._trackSynergyPeak();
     }
+
+    if (typeof AudioEngine !== 'undefined') AudioEngine.play('lock');
 
     if (isBase) {
       this.phase = 'BUILD';
@@ -363,12 +466,16 @@ class Game {
     this.phase = 'WAVE';
     this.enemies = [];
     this.clearCombatVisuals();
-    this.waveSpawner = makeWaveSpawner(this.wave);
+    this.waveSpawner = makeWaveSpawner(this.wave, () => this.rng.next());
     const bossInfo = typeof getBossWaveInfo === 'function' ? getBossWaveInfo(this.wave) : null;
     if (bossInfo) {
       this.setBanner(`BOSS — Elite ${bossInfo.label}!`, 2.2);
     } else {
       this.setBanner(`Wave ${this.wave} — Defend!`, 1.6);
+    }
+    if (typeof AudioEngine !== 'undefined') {
+      AudioEngine.play('wave');
+      AudioEngine.setMusicPhase('wave');
     }
     this.waveStats = { kills: 0, points: 0, income: 0 };
     // Wall passive income at the start of each wave (scaled by per-cell effectiveness).
@@ -380,7 +487,7 @@ class Game {
       }
     });
     if (income > 0) {
-      this.score += income;
+      this.addPoints(income);
       this.waveStats.income = income;
     }
   }
@@ -411,9 +518,10 @@ class Game {
     for (const e of killed) {
       const scale = CONFIG.KILL_REWARD_WAVE_SCALE ?? 0.012;
       const pts = Math.floor(e.stats.reward * (1 + (this.wave - 1) * scale));
-      this.score += pts;
+      this.addPoints(pts);
       this.waveStats.kills += 1;
       this.waveStats.points += pts;
+      this.runStats.totalKills += 1;
     }
     this.enemies = this.enemies.filter((e) => !e.dead);
 
@@ -441,24 +549,52 @@ class Game {
     if (this.wave >= CONFIG.TOTAL_WAVES) {
       this.phase = 'WIN';
       this.setBanner(`Victory! Final score: ${this.score}`, 99);
-      window.dispatchEvent(new CustomEvent('ttd-game-end', {
-        detail: { win: true, score: this.score, wave: this.wave },
-      }));
+      this._emitGameEnd(true);
       return;
     }
     this.setBanner(summary, 2.0);
-    if (this.wave % CONFIG.WAVES_PER_SHOP === 0) {
+    if (this.wave % this.wavesPerShop() === 0) {
+      if (this.gameMode && this.gameMode.shopEnabled === false) {
+        this.reshuffleDeckRandom();
+        this.advanceToNextBuild();
+        return;
+      }
       this.openShop();
       return;
     }
     this.advanceToNextBuild();
   }
 
+  reshuffleDeckRandom() {
+    const rngFn = () => this.rng.next();
+    const cards = generateRandomDeck(
+      this.wave,
+      CONFIG.DECK_SIZE,
+      rngFn,
+      this.gameMode.shapes
+    );
+    this.deck.replaceAll(cards);
+    this.heldCard = null;
+    this.setBanner('Deck reshuffled!', 2.5);
+    if (typeof AudioEngine !== 'undefined') AudioEngine.play('buy');
+  }
+
   openShop() {
     this.clearCombatVisuals();
     this.phase = 'SHOP';
     this.clearPendingShopBuy();
-    this.shopCards = generateShopCards(this.wave, CONFIG.SHOP_CARD_COUNT).map((c) => ({ ...c, bought: false }));
+    const costMul = (this.difficulty && this.difficulty.shopCostMul) || 1;
+    this.shopCards = generateShopCards(
+      this.wave,
+      CONFIG.SHOP_CARD_COUNT,
+      () => this.rng.next(),
+      costMul,
+      this.gameMode.shapes
+    ).map((c) => ({ ...c, bought: false }));
+    if (typeof AudioEngine !== 'undefined') {
+      AudioEngine.play('shop');
+      AudioEngine.setMusicPhase('build');
+    }
     window.dispatchEvent(new CustomEvent('ttd-shop-open', { detail: { wave: this.wave } }));
   }
 
@@ -477,7 +613,9 @@ class Game {
     if (!this.deck.replace(removeDeckCardId, newCard)) return { ok: false, reason: 'Replace failed' };
     this.score -= sc.cost;
     sc.bought = true;
+    this.runStats.cardsBought += 1;
     this.clearPendingShopBuy();
+    if (typeof AudioEngine !== 'undefined') AudioEngine.play('buy');
     return { ok: true };
   }
 
@@ -491,6 +629,7 @@ class Game {
     }
     this.phase = 'BUILD';
     this.piecesLeftThisBuild = this.piecesPerBuild();
+    if (typeof AudioEngine !== 'undefined') AudioEngine.setMusicPhase('build');
     if ((this.wave - 1) % CONFIG.WAVES_PER_SPEEDUP === 0 && this.wave > 1) {
       this.setBanner(`Speed Up! Tier ${this.speedTier() + 1}`, 1.4);
     }
@@ -509,9 +648,7 @@ class Game {
     this.phase = 'GAMEOVER';
     this.clearCombatVisuals();
     this.setBanner('Game Over', 99);
-    window.dispatchEvent(new CustomEvent('ttd-game-end', {
-      detail: { win: false, reason, score: this.score, wave: this.wave },
-    }));
+    this._emitGameEnd(false, reason);
   }
 
   // Strip in-flight projectiles and combat VFX when leaving the wave phase.

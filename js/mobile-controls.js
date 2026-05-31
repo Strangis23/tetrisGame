@@ -6,6 +6,7 @@ class MobileControls {
     this.canvasWrap = canvasWrap;
     this.root = document.getElementById('mobile-controls');
     this.toggleEl = document.getElementById('mobile-controls-toggle');
+    this.hudToggleBtn = document.getElementById('mobile-controls-hud-btn');
     this.waveSpeedBtn = this.root?.querySelector('[data-action="waveSpeed"]');
 
     const coarse = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
@@ -13,24 +14,37 @@ class MobileControls {
     this.enabled = stored === '1' || (stored == null && coarse);
 
     if (this.toggleEl) {
-      this.toggleEl.checked = this.enabled;
       this.toggleEl.addEventListener('change', () => {
         this.setEnabled(this.toggleEl.checked);
       });
     }
+    if (this.hudToggleBtn) {
+      this.hudToggleBtn.addEventListener('click', () => {
+        this.setEnabled(!this.enabled);
+      });
+    }
 
     this._bindButtons();
+    this._syncToggleUi();
     this.syncVisibility();
   }
 
   setEnabled(on) {
     this.enabled = !!on;
     localStorage.setItem('ttd-mobile-controls', this.enabled ? '1' : '0');
-    if (this.toggleEl) this.toggleEl.checked = this.enabled;
+    this._syncToggleUi();
     this.syncVisibility();
   }
 
   isEnabled() { return this.enabled; }
+
+  _syncToggleUi() {
+    if (this.toggleEl) this.toggleEl.checked = this.enabled;
+    if (this.hudToggleBtn) {
+      this.hudToggleBtn.setAttribute('aria-pressed', this.enabled ? 'true' : 'false');
+      this.hudToggleBtn.classList.toggle('active', this.enabled);
+    }
+  }
 
   syncVisibility() {
     if (!this.root) return;
@@ -63,6 +77,7 @@ class MobileControls {
     for (const btn of this.root.querySelectorAll('[data-action]')) {
       const action = btn.dataset.action;
       const start = (e) => {
+        if (e.button !== 0) return;
         e.preventDefault();
         if (!this.enabled) return;
         if (globalActions.has(action)) {
@@ -70,8 +85,10 @@ class MobileControls {
           if (action === 'waveSpeed') this.syncVisibility();
           return;
         }
-        if (!this.input.canControlPiece()) return;
+        if (!this.input.canActOnPiece()) return;
         if (repeat.has(action)) {
+          btn.setPointerCapture(e.pointerId);
+          btn.classList.add('mob-btn-held');
           this.input.holdAction(action, true);
         } else {
           this.input.performAction(action);
@@ -79,13 +96,15 @@ class MobileControls {
       };
       const end = (e) => {
         e.preventDefault();
-        if (repeat.has(action)) {
-          this.input.holdAction(action, false);
+        if (!repeat.has(action)) return;
+        btn.classList.remove('mob-btn-held');
+        if (btn.hasPointerCapture(e.pointerId)) {
+          btn.releasePointerCapture(e.pointerId);
         }
+        this.input.holdAction(action, false);
       };
       btn.addEventListener('pointerdown', start);
       btn.addEventListener('pointerup', end);
-      btn.addEventListener('pointerleave', end);
       btn.addEventListener('pointercancel', end);
     }
   }

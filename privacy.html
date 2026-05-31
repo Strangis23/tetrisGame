@@ -3,14 +3,16 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Privacy — Tetris Tower Defense</title>
-<link rel="stylesheet" href="styles.css?v=18" />
+<title>Privacy — Stackwave Defense</title>
+<link rel="stylesheet" href="assets/fonts/fonts.css" />
+<link rel="stylesheet" href="styles.css?v=31" />
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6914309383865227"
-     crossorigin="anonymous"></script>
+     crossorigin="anonymous" data-swd-ads></script>
 </head>
 <body class="legal-page-body">
+<canvas id="starfield-canvas" aria-hidden="true"></canvas>
 <div id="app-shell" class="app-shell-legal">
-  <main class="legal-page">
+  <main class="legal-page space-panel">
     <header>
       <h1>Privacy Policy</h1>
       <p class="muted">Last updated: May 2026</p>
@@ -19,54 +21,50 @@
     <section>
       <h2>Overview</h2>
       <p>
-        Tetris Tower Defense (“the game”) is a browser game. This policy describes what data
-        the game stores locally and how third-party advertising may collect information when
-        ads are enabled on the hosted version of the site.
+        Stackwave Defense (“the game”) is available as a browser game and as a desktop build on Steam.
+        This policy describes what data the game stores on your device.
       </p>
     </section>
 
     <section>
       <h2>Data stored on your device</h2>
       <p>
-        High scores and game preferences are saved in your browser’s <strong>localStorage</strong>.
-        This data stays on your device and is not sent to our servers. You can clear it anytime
-        via the “Clear all scores” button on the high scores page or through your browser settings.
+        High scores, achievements, settings, and lifetime stats are saved locally
+        (<strong>localStorage</strong> in the browser; Chromium profile storage in the desktop app).
+        This data is not sent to our servers.
+      </p>
+      <p>
+        You can clear browser data via the high scores page or your browser settings.
+        Steam builds may also sync save data through <strong>Steam Cloud</strong> when you are signed
+        into Steam — see Valve’s privacy policy for how Steam handles that data.
       </p>
     </section>
 
-    <section>
-      <h2>Advertising</h2>
+    <section id="privacy-ads-section">
+      <h2>Advertising (web version only)</h2>
       <p>
         When the game is published on a live website, a banner advertisement may appear at the
         bottom of the screen. Ads are provided by <strong>Google AdSense</strong> (Google LLC).
-        Google may use cookies and similar technologies to serve and measure ads, including
-        personalized ads where permitted by law and your settings.
+        Google may use cookies and similar technologies to serve and measure ads.
       </p>
       <p>
-        Ads do not affect gameplay. There are no rewarded ads and no pay-to-win mechanics tied
-        to advertising.
-      </p>
-      <p>
-        Learn how Google uses data:
-        <a href="https://policies.google.com/technologies/partner-sites" rel="noopener noreferrer" target="_blank">Google partner sites policy</a>.
-        You can manage ad personalization at
-        <a href="https://adssettings.google.com/" rel="noopener noreferrer" target="_blank">Google Ad Settings</a>.
+        The Steam/desktop build does not include advertising.
       </p>
     </section>
 
     <section>
-      <h2>Children</h2>
+      <h2>Steam</h2>
       <p>
-        The game is not directed at children under 13. If you believe a child has provided
-        personal information through ad services, contact us and we will work to address it.
+        If you play through Steam, your Steam account, achievements, and cloud saves are processed
+        by Valve Corporation under the Steam Subscriber Agreement and Steam Privacy Policy.
       </p>
     </section>
 
     <section>
       <h2>Contact</h2>
       <p>
-        For privacy questions about this game, contact the site operator through the contact
-        method listed on the page where you play the game.
+        For privacy questions about this game, contact the publisher through the support link on
+        the Steam store page or the website where you play the browser version.
       </p>
     </section>
 
@@ -79,6 +77,20 @@
   </footer>
 </div>
 
-<script src="js/ads.js?v=18"></script>
+<script src="js/platform.js?v=31"></script>
+<script src="js/settings.js?v=31"></script>
+<script src="js/starfield.js?v=31"></script>
+<script src="js/ads.js?v=31"></script>
+<script>
+  (function () {
+    if (typeof Platform !== 'undefined' && !Platform.hasAds) {
+      document.querySelectorAll('[data-swd-ads]').forEach(function (el) { el.remove(); });
+      var adsSection = document.getElementById('privacy-ads-section');
+      if (adsSection) adsSection.classList.add('hidden');
+      var banner = document.getElementById('ad-banner');
+      if (banner) banner.classList.add('hidden');
+    }
+  })();
+</script>
 </body>
 </html>

@@ -1,13 +1,17 @@
-# Tetris Tower Defense — Deck-Builder Edition
+# Stackwave Defense — Deck-Builder Edition
 
-A pure-vanilla HTML5 Canvas game that fuses Tetris with a tower-defense deck-builder. Drop tetrominoes from your **deck of 20 cards** to build defenses, then survive a wave of A\*-pathing enemies trying to reach your home base. Every five waves, a **rarity-weighted shop** offers ten random upgraded cards. Buy any one — but you must remove an existing card from your deck in exchange.
+A pure-vanilla HTML5 Canvas game that fuses polyomino stacking with a tower-defense deck-builder. Drop tetromino-shaped modules from your **deck of 20 cards** to build defenses, then survive a wave of A\*-pathing enemies trying to reach your home base. Every five waves, a **rarity-weighted shop** offers ten random upgraded cards. Buy any one — but you must remove an existing card from your deck in exchange.
 
-No build tools, no dependencies. Open `index.html` (or serve the folder over HTTP) and play.
+No build tools required for the web version. Open `index.html` (or serve the folder over HTTP) and play.
+
+## Steam / Desktop
+
+See [`desktop/README.md`](desktop/README.md) for the Electron wrapper, Steamworks integration, and build instructions (Windows + Linux / Steam Deck).
 
 ## How to Play
 
 1. **Place your home base.** The first piece you drop is your home base. Protect it.
-2. **Build phase.** Each round, four pieces are drawn from your deck. Place them like Tetris. Filled rows clear (and award points), but the towers in those rows are destroyed.
+2. **Build phase.** Each round, four pieces are drawn from your deck. Place them on the grid. Filled rows clear (and award points), but the towers in those rows are destroyed.
 3. **Wave phase.** Cells act as towers based on the role on their card. Walkers and brutes path with A\*; flyers ignore terrain; brutes break walls. Reach zero enemies to clear the wave.
 4. **Shop (every 5 waves).** Browse 10 random cards across 5 rarities. Click **Buy**, then click any of your existing 20 deck cards to swap it out. Repeat for as many purchases as you can afford.
 5. **Win** by clearing all 100 waves. **Lose** if your **home base HP** reaches zero, your base is line-cleared away, or blocks reach the spawn area.
@@ -80,7 +84,7 @@ The starter `Pellet Gun` is intentionally weaker than late-game alternatives. Su
 
 ## High scores
 
-Runs are saved automatically when you win or lose. Tap **★** in the HUD to open **highscores.html**, which shows your best run (highest **wave**, then **points remaining**). Scores persist in your browser (`localStorage`, up to 20 entries).
+Runs are saved automatically when you win or lose. Tap **★** in the HUD to open **highscores.html**, which shows your best run (highest **wave**, then **points remaining**). Scores persist in your browser (`localStorage`, up to 100 entries). Steam builds sync saves via Steam Cloud when signed in.
 
 **Synergy:** adjacent same-role blocks boost HP and attack. Synergized cells show a **gold outline** on the board (no pop-up text).
 
@@ -94,26 +98,16 @@ On mobile, the board stays on top; deck and extra panels collapse under **▸** 
 index.html
 highscores.html
 styles.css
+assets/fonts/     bundled Exo 2 + Orbitron (offline)
+desktop/          Electron + Steamworks wrapper
+steam/            Achievement API names + SteamPipe templates
 js/
+  platform.js     web vs desktop/Steam detection + cloud bridge
   config.js       constants, rarity colors, speed/HP scaling tables
-  matchups.js     role vs enemy damage multipliers
-  highscores.js   local leaderboard (wave + points)
-  cards.js        ROLES, RARITIES, stat templates, rarityWeights, generateShopCards
-  deck.js         Deck class — shuffle/draw/peek/replace/serialize
-  pieces.js       Piece wraps a card; movement + rotation
-  pathfinding.js  A* with MinHeap for ground enemies
-  projectiles.js  bullets, splash, pierce
-  enemies.js      Walker / Brute / Flyer / Boss (speed × ENEMY_SPEED_MUL[tier])
-  towers.js       per-role tick functions (read cell.stats directly)
-  waves.js        wave composition + spawn schedule
-  ui.js           HUD, persistent deck-chip panel, shop modal with swap UX
-  input.js        keyboard + mouse + DAS
-  render.js       canvas drawing; rarity outlines + role glyphs on placed cells
-  game.js         FSM, deck ownership, buyCard(shopIndex, removeId)
-  main.js         RAF loop bootstrap
+  ...
 ```
 
-## Running
+## Running (web)
 
 Any static HTTP server works. From the project root:
 

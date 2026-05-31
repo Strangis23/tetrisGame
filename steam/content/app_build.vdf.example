@@ -1,0 +1,13 @@
+"AppBuild"
+{
+  // Copy to app_build.vdf and replace YOUR_APP_ID / depot IDs from Steamworks partner site.
+  "AppID" "YOUR_APP_ID"
+  "Desc" "Stackwave Defense build"
+  "ContentRoot" "../content/"
+  "BuildOutput" "../output/"
+  "Depots"
+  {
+    "YOUR_WINDOWS_DEPOT_ID" "depot_build_win.vdf"
+    "YOUR_LINUX_DEPOT_ID" "depot_build_linux.vdf"
+  }
+}

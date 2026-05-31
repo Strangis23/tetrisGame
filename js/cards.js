@@ -114,9 +114,10 @@ function weightsToObj(arr) {
   return { common: arr[0], uncommon: arr[1], rare: arr[2], epic: arr[3], legendary: arr[4] };
 }
 
-function sampleRarity(weights) {
+function sampleRarity(weights, rngFn) {
+  const rng = typeof rngFn === 'function' ? rngFn : Math.random;
   const total = RARITIES.reduce((s, r) => s + (weights[r] || 0), 0);
-  let r = Math.random() * total;
+  let r = rng() * total;
   for (const rarity of RARITIES) {
     r -= weights[rarity] || 0;
     if (r <= 0) return rarity;
@@ -150,33 +151,49 @@ function makeCard(role, rarity, shape) {
   };
 }
 
-// Generate the player's starting deck: 10 walls + 10 shooters, all common,
-// random shapes drawn uniformly from SHAPE_KEYS.
-function makeStarterDeck() {
+function pickShape(shapePool, rngFn) {
+  const pool = shapePool && shapePool.length ? shapePool : SHAPE_KEYS;
+  const rng = typeof rngFn === 'function' ? rngFn : Math.random;
+  return pool[Math.floor(rng() * pool.length)];
+}
+
+// Generate the player's starting deck: 10 walls + 10 shooters, all common.
+function makeStarterDeck(rngFn, shapePool) {
+  const rng = typeof rngFn === 'function' ? rngFn : Math.random;
   const cards = [];
   for (let i = 0; i < 10; i++) {
-    const shape = SHAPE_KEYS[Math.floor(Math.random() * SHAPE_KEYS.length)];
-    cards.push(makeCard('wall', 'common', shape));
+    cards.push(makeCard('wall', 'common', pickShape(shapePool, rng)));
   }
   for (let i = 0; i < 10; i++) {
-    const shape = SHAPE_KEYS[Math.floor(Math.random() * SHAPE_KEYS.length)];
-    cards.push(makeCard('shooter', 'common', shape));
+    cards.push(makeCard('shooter', 'common', pickShape(shapePool, rng)));
   }
   return cards;
 }
 
-// Generate `n` shop cards for the given wave. Each card's rarity is sampled
-// from rarityWeights(wave); role is sampled uniformly from roles available at
-// that rarity; shape is uniform across SHAPE_KEYS.
-function generateShopCards(wave, n = CONFIG.SHOP_CARD_COUNT) {
+function generateRandomDeck(wave, n = CONFIG.DECK_SIZE, rngFn, shapePool) {
+  const rng = typeof rngFn === 'function' ? rngFn : Math.random;
   const weights = rarityWeights(wave);
   const cards = [];
   for (let i = 0; i < n; i++) {
-    const rarity = sampleRarity(weights);
+    const rarity = sampleRarity(weights, rng);
     const roles = rolesAvailableAtRarity(rarity);
-    const role = roles[Math.floor(Math.random() * roles.length)];
-    const shape = SHAPE_KEYS[Math.floor(Math.random() * SHAPE_KEYS.length)];
-    cards.push(makeCard(role, rarity, shape));
+    const role = roles[Math.floor(rng() * roles.length)];
+    cards.push(makeCard(role, rarity, pickShape(shapePool, rng)));
+  }
+  return cards;
+}
+
+function generateShopCards(wave, n = CONFIG.SHOP_CARD_COUNT, rngFn, shopCostMul = 1, shapePool) {
+  const rng = typeof rngFn === 'function' ? rngFn : Math.random;
+  const weights = rarityWeights(wave);
+  const cards = [];
+  for (let i = 0; i < n; i++) {
+    const rarity = sampleRarity(weights, rng);
+    const roles = rolesAvailableAtRarity(rarity);
+    const role = roles[Math.floor(rng() * roles.length)];
+    const card = makeCard(role, rarity, pickShape(shapePool, rng));
+    card.cost = Math.max(1, Math.floor(card.cost * shopCostMul));
+    cards.push(card);
   }
   return cards;
 }

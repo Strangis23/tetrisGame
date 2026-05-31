@@ -85,6 +85,8 @@ const CONFIG = {
     flyer:  { hp: 16, speed: 3.2, reward: 10, color: '#f472b6', radius: 0.32 },
     brute:  { hp: 100, speed: 0.95, reward: 19, color: '#7c2d12', radius: 0.46, attackDmg: 1, attackRate: 0.7 },
     boss:   { hp: 700, speed: 0.85, reward: 185, color: '#581c87', radius: 0.7, attackDmg: 2, attackRate: 0.5 },
+    shielded: { hp: 24, speed: 2.0, reward: 14, color: '#60a5fa', radius: 0.38, shield: 20 },
+    rusher: { hp: 14, speed: 4.2, reward: 9, color: '#f97316', radius: 0.28 },
   },
   ENEMY_HP_GROWTH: 0.07, // hp = base * (1 + (wave - 1) * GROWTH)
   // Kill reward scales with wave: reward * (1 + (wave - 1) * SCALE)
@@ -126,6 +128,8 @@ const CONFIG = {
     flyer:  { weak: ['sniper', 'piercer'], resist: ['shooter', 'splash'] },
     brute:  { weak: ['piercer', 'splash'], resist: ['sniper', 'gunner'] },
     boss:   { weak: ['multishot', 'slow'], resist: ['shooter', 'gunner'] },
+    shielded: { weak: ['splash', 'multishot'], resist: ['shooter', 'piercer'] },
+    rusher: { weak: ['slow', 'sniper'], resist: ['gunner', 'shooter'] },
   },
   MATCHUP_WEAK_MULT: 1.5,
   MATCHUP_RESIST_MULT: 0.55,
@@ -152,6 +156,36 @@ const CONFIG = {
     CLUSTER_CAP: 4,
     MAX_MULT: 1.75,
     VISUAL_THRESHOLD: 1.001,
+  },
+
+  DIFFICULTY_PRESETS: {
+    casual: {
+      label: 'Casual',
+      fallSpeedMul: 1.2,
+      piecesPerWave: 5,
+      shopCostMul: 0.85,
+      enemySpeedMul: 0.92,
+      holdEnabled: true,
+      wavesPerShop: 5,
+    },
+    normal: {
+      label: 'Normal',
+      fallSpeedMul: 1,
+      piecesPerWave: 4,
+      shopCostMul: 1,
+      enemySpeedMul: 1,
+      holdEnabled: true,
+      wavesPerShop: 5,
+    },
+    brutal: {
+      label: 'Brutal',
+      fallSpeedMul: 0.88,
+      piecesPerWave: 3,
+      shopCostMul: 1.15,
+      enemySpeedMul: 1.12,
+      holdEnabled: false,
+      wavesPerShop: 8,
+    },
   },
 };
 

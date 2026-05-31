@@ -8,10 +8,11 @@ class Enemy {
     const speedMulTable = CONFIG.ENEMY_SPEED_MUL || [1];
     const tier = Math.min(speedMulTable.length - 1, Math.max(0, Math.floor((wave - 1) / 10)));
     const speedMul = speedMulTable[tier];
+    const diffMul = (typeof window !== 'undefined' && window.TTD?.game?.difficulty?.enemySpeedMul) || 1;
     this.stats = {
       ...base,
       hp: Math.floor(base.hp * hpScale),
-      speed: base.speed * speedMul,
+      speed: base.speed * speedMul * diffMul,
     };
     this.maxHp = this.stats.hp;
     this.hp = this.stats.hp;
@@ -30,6 +31,21 @@ class Enemy {
     this._lastX = x; this._lastY = y;
     this._stuckTime = 0;
     this._lifetime = 0;
+    this.facing = Math.PI; // sprite art faces up; default toward base (down screen)
+  }
+
+  updateFacing(dx, dy, dt) {
+    const len = Math.hypot(dx, dy);
+    if (len < 0.001) return;
+    const target = Math.atan2(dy / len, dx / len) + Math.PI / 2;
+    if (!dt || dt <= 0) {
+      this.facing = target;
+      return;
+    }
+    let diff = target - this.facing;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    this.facing += diff * Math.min(1, dt * 14);
   }
 
   // Override
@@ -40,6 +56,12 @@ class Enemy {
     if (opts.sourceRole && typeof getMatchupMultiplier === 'function') {
       dmg *= getMatchupMultiplier(opts.sourceRole, this);
     }
+    if (this.shieldHp > 0) {
+      const absorbed = Math.min(this.shieldHp, dmg);
+      this.shieldHp -= absorbed;
+      dmg -= absorbed;
+    }
+    if (dmg <= 0) return;
     this.hp -= dmg;
     if (this.hp <= 0) {
       this.dead = true;
@@ -136,6 +158,7 @@ class Walker extends Enemy {
     const dx = tx - this.x, dy = ty - this.y;
     const dist = Math.hypot(dx, dy);
     const step = speed * dt;
+    if (dist > 0.001) this.updateFacing(dx, dy, dt);
     if (dist <= step) {
       this.x = tx; this.y = ty;
       this.path.shift();
@@ -160,6 +183,7 @@ class Walker extends Enemy {
     const dist = Math.hypot(dx, dy);
     if (dist < 0.001) return;
     const step = speed * dt;
+    this.updateFacing(dx, dy, dt);
     this.x += (dx / dist) * step;
     this.y += (dy / dist) * step;
     this.checkReachedBase(game);
@@ -217,6 +241,7 @@ class Brute extends Walker {
     // If next waypoint is a solid (non-base) cell, attack it instead of moving.
     const nextCell = game.grid.get(target.x, target.y);
     if (nextCell && !nextCell.isBase) {
+      this.updateFacing(target.x + 0.5 - this.x, target.y + 0.5 - this.y, dt);
       this.attackTimer += dt;
       if (this.attackTimer >= this.stats.attackRate) {
         this.attackTimer = 0;
@@ -236,6 +261,7 @@ class Brute extends Walker {
     const dx = tx - this.x, dy = ty - this.y;
     const dist = Math.hypot(dx, dy);
     const step = speed * dt;
+    if (dist > 0.001) this.updateFacing(dx, dy, dt);
     if (dist <= step) {
       this.x = tx; this.y = ty;
       this.path.shift();
@@ -270,6 +296,7 @@ class Flyer extends Enemy {
     const dx = tx - this.x, dy = ty - this.y;
     const dist = Math.hypot(dx, dy);
     const step = speed * dt;
+    if (dist > 0.001) this.updateFacing(dx, dy, dt);
     if (dist <= step) {
       this.x = tx; this.y = ty;
       this.enterBase(game);
@@ -294,6 +321,44 @@ class Boss extends Brute {
   }
 }
 
+class Shielded extends Walker {
+  constructor(x, y, wave) {
+    super(x, y, wave);
+    this.type = 'shielded';
+    const base = CONFIG.ENEMY_STATS.shielded;
+    const hpScale = 1 + Math.max(0, wave - 1) * (CONFIG.ENEMY_HP_GROWTH || 0.07);
+    const speedMulTable = CONFIG.ENEMY_SPEED_MUL || [1];
+    const tier = Math.min(speedMulTable.length - 1, Math.max(0, Math.floor((wave - 1) / 10)));
+    this.stats = {
+      ...base,
+      hp: Math.floor(base.hp * hpScale),
+      speed: base.speed * speedMulTable[tier] * ((typeof window !== 'undefined' && window.TTD?.game?.difficulty?.enemySpeedMul) || 1),
+    };
+    this.maxHp = this.stats.hp;
+    this.hp = this.stats.hp;
+    this.shieldHp = Math.floor((base.shield || 18) * (1 + (wave - 1) * 0.04));
+    this.maxShieldHp = this.shieldHp;
+  }
+}
+
+class Rusher extends Walker {
+  constructor(x, y, wave) {
+    super(x, y, wave);
+    this.type = 'rusher';
+    const base = CONFIG.ENEMY_STATS.rusher;
+    const hpScale = 1 + Math.max(0, wave - 1) * (CONFIG.ENEMY_HP_GROWTH || 0.07);
+    const speedMulTable = CONFIG.ENEMY_SPEED_MUL || [1];
+    const tier = Math.min(speedMulTable.length - 1, Math.max(0, Math.floor((wave - 1) / 10)));
+    this.stats = {
+      ...base,
+      hp: Math.floor(base.hp * hpScale),
+      speed: base.speed * speedMulTable[tier] * ((typeof window !== 'undefined' && window.TTD?.game?.difficulty?.enemySpeedMul) || 1),
+    };
+    this.maxHp = this.stats.hp;
+    this.hp = this.stats.hp;
+  }
+}
+
 function makeEnemy(type, grid, wave, opts = {}) {
   const col = Math.floor(Math.random() * grid.w);
   const x = col + 0.5, y = 0.4;
@@ -303,6 +368,8 @@ function makeEnemy(type, grid, wave, opts = {}) {
     case 'flyer':  enemy = new Flyer(x, y, wave); break;
     case 'brute':  enemy = new Brute(x, y, wave); break;
     case 'boss':   enemy = new Boss(x, y, wave); break;
+    case 'shielded': enemy = new Shielded(x, y, wave); break;
+    case 'rusher': enemy = new Rusher(x, y, wave); break;
     default: enemy = new Walker(x, y, wave);
   }
   if (opts.elite) applyEliteStats(enemy, wave, type);

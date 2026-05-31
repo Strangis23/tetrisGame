@@ -1,0 +1,27 @@
+{
+  "description": "Define matching achievements in Steamworks Partner (Edit Steamworks Settings > Achievements). API names must match steamApiName.",
+  "achievements": [
+    { "id": "first_win", "steamApiName": "FIRST_WIN", "title": "Centurion", "desc": "Clear all 100 waves." },
+    { "id": "wave_50", "steamApiName": "WAVE_50", "title": "Halfway There", "desc": "Reach wave 50 in a run." },
+    { "id": "tetris", "steamApiName": "QUAD_CLEAR", "title": "Quad Clear!", "desc": "Clear 4 lines at once." },
+    { "id": "shop_swap", "steamApiName": "SHOP_SWAP", "title": "Deck Doctor", "desc": "Complete a shop card swap." },
+    { "id": "fortify_3", "steamApiName": "FORTIFY_3", "title": "Bunker Mindset", "desc": "Fortify base 3 times in one run." },
+    { "id": "daily_run", "steamApiName": "DAILY_RUN", "title": "Daily Defender", "desc": "Finish a daily seeded run (win or lose)." },
+    { "id": "brutal_win", "steamApiName": "BRUTAL_WIN", "title": "Iron Stack", "desc": "Win on Brutal difficulty." },
+    { "id": "kills_500", "steamApiName": "KILLS_500", "title": "Exterminator", "desc": "Score 500+ kills in one run." },
+    { "id": "win_classic", "steamApiName": "WIN_CLASSIC", "title": "Classic Victor", "desc": "Win on Classic mode." },
+    { "id": "win_straights", "steamApiName": "WIN_STRAIGHTS", "title": "Line Rider", "desc": "Win Straights Only mode." },
+    { "id": "win_bendy", "steamApiName": "WIN_BENDY", "title": "Snake Charmer", "desc": "Win Bendy Only mode." },
+    { "id": "win_lebron", "steamApiName": "WIN_LEBRON", "title": "Lebron James", "desc": "Win Lebron James mode." },
+    { "id": "win_big_o", "steamApiName": "WIN_BIG_O", "title": "Big O Energy", "desc": "Win Big O mode." },
+    { "id": "win_t_piece", "steamApiName": "WIN_T_PIECE", "title": "T Marks the Spot", "desc": "Win T-piece mode." },
+    { "id": "win_random", "steamApiName": "WIN_RANDOM", "title": "Chaos Theory", "desc": "Win Random mode." }
+  ],
+  "cloudFiles": [
+    { "root": "SWD", "path": "ttd-settings", "default": "" },
+    { "root": "SWD", "path": "ttd-highscores", "default": "" },
+    { "root": "SWD", "path": "ttd-highscores-prefs", "default": "" },
+    { "root": "SWD", "path": "ttd-achievements", "default": "" },
+    { "root": "SWD", "path": "ttd-lifetime-stats", "default": "" }
+  ]
+}
